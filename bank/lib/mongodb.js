@@ -2,7 +2,11 @@ import mongoose from "mongoose"
 
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/banking-onboarding"
 
-const cached = global.mongoose || { conn: null, promise: null }
+let cached = global.mongoose
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null }
+}
 
 async function connectDB() {
   if (cached.conn) {
@@ -10,14 +14,18 @@ async function connectDB() {
   }
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI)
+    const opts = {
+      bufferCommands: false,
+    }
+    cached.promise = mongoose.connect(MONGODB_URI, opts)
   }
 
   try {
     cached.conn = await cached.promise
-    console.log("[v0] MongoDB connected")
+    console.log("[v0] MongoDB connected to:", MONGODB_URI)
     return cached.conn
   } catch (error) {
+    cached.promise = null
     console.error("[v0] MongoDB connection error:", error)
     throw error
   }
