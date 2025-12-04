@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/auth"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/auth"
 import connectDB from "@/lib/mongodb"
 import Onboarding from "@/models/Onboarding"
 
 export async function GET(req) {
   try {
-    const session = await auth()
+    const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -32,7 +33,7 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
-    const session = await auth()
+    const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

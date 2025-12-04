@@ -18,7 +18,7 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      await signIn("google", { callbackUrl: "/dashboard" })
+      await signIn("google", { callbackUrl: "/" })
     } catch (error) {
       setError('Failed to sign in with Google')
     } finally {
@@ -30,7 +30,7 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      await signIn("github", { callbackUrl: "/dashboard" })
+      await signIn("github", { callbackUrl: "/" })
     } catch (error) {
       setError('Failed to sign in with GitHub')
     } finally {
@@ -63,7 +63,7 @@ export default function LoginPage() {
             setError('Authentication failed. Please try again.')
         }
       } else if (result?.ok) {
-        router.push('/dashboard')
+        router.push('/')
       } else {
         setError('Authentication failed. Please try again.')
       }
@@ -104,7 +104,7 @@ export default function LoginPage() {
         })
 
         if (result?.ok) {
-          router.push('/dashboard')
+          router.push('/')
         } else {
           setError('Account created but failed to sign in. Please try signing in manually.')
         }
@@ -118,7 +118,7 @@ export default function LoginPage() {
     }
   }
   if(session?.user?.name){
-    router.push("/dashboard")
+    router.push("/")
   }
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-900 flex items-center justify-center p-4">
