@@ -11,9 +11,9 @@ export default function Home() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      signIn("google", { callbackUrl: "/dashboard" })
+      router.push("/login")
     }
-  }, [status])
+  }, [status, router])
 
   if (status === "loading") {
     return (
