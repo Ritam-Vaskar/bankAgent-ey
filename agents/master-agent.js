@@ -57,68 +57,49 @@ export async function processMasterAgentMessage(userMessage, userId) {
       await onboarding.save()
     }
 
-    const context = `
-Current Onboarding Status: ${onboarding.status}
-Current Step: ${onboarding.step}
-Collected Data: ${JSON.stringify(onboarding.data)}
+    console.log("[v0] Processing step:", onboarding.step, "Message:", userMessage)
 
-User Message: "${userMessage}"
-
-Perform validation and determine next step. If user input is valid for current step, save it. If invalid, ask again.
-${onboarding.step === "name" ? "User should provide their full name (letters only, no numbers)." : ""}
-${onboarding.step === "dob" ? "User should provide DOB in YYYY-MM-DD format. User must be 18+ years old." : ""}
-${onboarding.step === "phone" ? "User should provide 10-digit Indian phone number." : ""}
-${onboarding.step === "address" ? "User should provide their address (minimum 10 characters)." : ""}
-${onboarding.step === "aadhaar" ? "User is uploading Aadhaar document." : ""}
-${onboarding.step === "pan" ? "User is uploading PAN document." : ""}
-`
-
-    const response = await callGemini(context, MASTER_SYSTEM_PROMPT, tools)
-
-    // Parse response and extract actions
     let agentAction = "continue"
-    let responseMessage = response
+    let responseMessage = ""
     let nextStep = onboarding.step
 
-    // Simple parsing of tool calls from response
-    if (response.includes("saveField")) {
-      // Validate and save based on current step
-      if (onboarding.step === "name") {
-        if (validateName(userMessage)) {
-          onboarding.data.fullName = userMessage
-          nextStep = "dob"
-          responseMessage = "Thank you! Now, please provide your date of birth (YYYY-MM-DD format):"
-        } else {
-          responseMessage =
-            "The input you provided seems incorrect. Please enter a valid full name (letters only, no numbers)."
-        }
-      } else if (onboarding.step === "dob") {
-        if (validateDOB(userMessage)) {
-          onboarding.data.dob = userMessage
-          nextStep = "phone"
-          responseMessage = "Great! Now, please provide your 10-digit phone number:"
-        } else {
-          responseMessage =
-            "The input you provided seems incorrect. Please enter a valid date of birth (YYYY-MM-DD) and be at least 18 years old."
-        }
-      } else if (onboarding.step === "phone") {
-        if (validatePhone(userMessage)) {
-          onboarding.data.phone = userMessage
-          nextStep = "address"
-          responseMessage = "Perfect! Now, please provide your address (minimum 10 characters):"
-        } else {
-          responseMessage = "The input you provided seems incorrect. Please enter a valid 10-digit Indian phone number."
-        }
-      } else if (onboarding.step === "address") {
-        if (validateAddress(userMessage)) {
-          onboarding.data.address = userMessage
-          nextStep = "aadhaar"
-          responseMessage = "Excellent! Now I need your Aadhaar document. Please upload your Aadhaar (PDF or XML):"
-          agentAction = "request_upload"
-        } else {
-          responseMessage =
-            "The input you provided seems incorrect. Please enter a valid address (minimum 10 characters)."
-        }
+    // Direct validation logic for each step
+    if (onboarding.step === "name") {
+      if (validateName(userMessage)) {
+        onboarding.data.fullName = userMessage
+        nextStep = "dob"
+        responseMessage = "✅ Thank you! Now, please provide your date of birth in YYYY-MM-DD format (e.g., 1995-06-15):"
+      } else {
+        responseMessage =
+          "⚠️ The input you provided seems incorrect. Please enter a valid full name (letters and spaces only, no numbers)."
+      }
+    } else if (onboarding.step === "dob") {
+      if (validateDOB(userMessage)) {
+        onboarding.data.dob = userMessage
+        nextStep = "phone"
+        responseMessage = "✅ Great! Now, please provide your 10-digit phone number:"
+      } else {
+        responseMessage =
+          "⚠️ The input you provided seems incorrect. Please enter a valid date of birth in YYYY-MM-DD format. You must be at least 18 years old."
+      }
+    } else if (onboarding.step === "phone") {
+      if (validatePhone(userMessage)) {
+        onboarding.data.phone = userMessage
+        nextStep = "address"
+        responseMessage = "✅ Perfect! Now, please provide your complete address (minimum 10 characters):"
+      } else {
+        responseMessage =
+          "⚠️ The input you provided seems incorrect. Please enter a valid 10-digit Indian phone number starting with 6-9."
+      }
+    } else if (onboarding.step === "address") {
+      if (validateAddress(userMessage)) {
+        onboarding.data.address = userMessage
+        nextStep = "aadhaar"
+        responseMessage = "✅ Excellent! Now I need your Aadhaar document. Please upload your Aadhaar (PDF or XML format):"
+        agentAction = "request_upload"
+      } else {
+        responseMessage =
+          "⚠️ The input you provided seems incorrect. Please enter a valid address with at least 10 characters."
       }
     }
 
@@ -131,6 +112,8 @@ ${onboarding.step === "pan" ? "User is uploading PAN document." : ""}
     }
 
     await onboarding.save()
+
+    console.log("[v0] Updated to step:", nextStep, "Status:", onboarding.status)
 
     return {
       message: responseMessage,
