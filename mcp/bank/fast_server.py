@@ -115,6 +115,8 @@ async def validate_documents(pan_card_no: str, aadhar_no: str) -> dict:
         },
     }
 
+# Keep above code unchanged...
+
 if __name__ == "__main__":
-    # Run via stdio, compatible with your FastMCP pattern
-    mcp.run(transport="stdio")
+    mcp.run()
+
