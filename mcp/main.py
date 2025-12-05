@@ -54,7 +54,7 @@ def build_client() -> MultiServerMCPClient:
     return MultiServerMCPClient(
         {
             "bank": {
-                "command": "python3",
+                "command": "python",
                 "args": [str(BANK_SERVER_PATH)],
                 "transport": "stdio",
             }
@@ -89,26 +89,33 @@ async def get_agent_with_bank_tools():
 
     # If no candidate worked, raise last error
     raise RuntimeError(f"No Groq model candidates worked: {last_error}")
-
-
+    
+    
 async def call_bank_tool_direct(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-    """Bypass LLM: directly call Bank FastMCP tool over stdio for reliability and speed."""
     server_params = StdioServerParameters(
-        command="python3",
-        args=[str(BANK_SERVER_PATH)],
+      
+       command="python",
+        args=["-m", "bank.fast_server"],
+
+        stderr=True  # capture stderr!
     )
+
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
-            await session.initialize()
-            result = await session.call_tool(tool_name, arguments)
-            # result.content is a list of content items; return first text/plain JSON if present
+            try:
+                await session.initialize()
+                result = await session.call_tool(tool_name, arguments)
+            except Exception as e:
+                print("BANK TOOL ERROR:", e)
+                raise e
+
             for item in result.content:
                 if getattr(item, "type", None) == "text":
                     try:
                         return json.loads(item.text)
                     except Exception:
                         return {"success": True, "raw": item.text}
-            # Fallback: return raw serialization
+
             return {"success": True, "raw": [c.__dict__ for c in result.content]}
 
 async def call_loan_tool_direct(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -145,7 +152,9 @@ def create_account_http():
     Expects JSON body with fields required by create_account tool.
     """
     try:
+        print("Received /create-account request")
         payload: Dict[str, Any] = request.get_json(force=True) or {}
+        print(f"Payload: {payload}")
 
         async def run():
             # Prefer direct tool call to avoid LLM latency/hangs

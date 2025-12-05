@@ -3,7 +3,7 @@ import logging
 from typing import Dict, List, Optional, Any
 from bson import ObjectId
 
-from database.connection import db_manager
+from db.database.connection import db_manager
 logger = logging.getLogger(__name__)
 
 class AccountModel:

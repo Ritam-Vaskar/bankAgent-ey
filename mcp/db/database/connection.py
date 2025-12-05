@@ -1,7 +1,7 @@
 import os
 import logging
 from motor.motor_asyncio import AsyncIOMotorClient
-
+import asyncio
 logger = logging.getLogger(__name__)
 
 class DatabaseManager:
@@ -16,6 +16,7 @@ class DatabaseManager:
             self.database = self.client[self.database_name]
             await self.client.admin.command('ping')
             logger.info(f"Connected to MongoDB: {self.database_name}")
+            
         except Exception as e:
             logger.error(f"MongoDB connection failed: {e}")
             raise
@@ -31,3 +32,4 @@ class DatabaseManager:
 
 # Provide a shared singleton instance for use across modules
 db_manager = DatabaseManager()
+
