@@ -2,7 +2,7 @@
 
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 
 export default function LoginPage() {
@@ -13,6 +13,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
+
+  // Redirect to home if the user is already logged in
+  useEffect(() => {
+    if (session?.user?.name) {
+      router.push("/")
+    }
+  }, [session, router])
 
   const handleGoogleSignIn = async () => {
     setLoading(true)
@@ -117,9 +124,7 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
-  if(session?.user?.name){
-    router.push("/")
-  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md">
