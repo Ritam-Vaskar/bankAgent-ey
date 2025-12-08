@@ -2,6 +2,7 @@
 """
 Flask app exposing HTTP endpoints that call the Bank MCP FastMCP server
 via langchain_mcp_adapters. Provides /create-account to create accounts.
+Updated to include Loan Approval System endpoints.
 """
 
 import os
@@ -20,9 +21,10 @@ from mcp.client.stdio import stdio_client
 from mcp import StdioServerParameters
 from dotenv import load_dotenv
 
-# Resolve bank FastMCP server path
+# Resolve server paths
 WORKDIR = Path(__file__).parent
 BANK_SERVER_PATH = WORKDIR / "bank" / "fast_server.py"
+LOAN_SERVER_PATH = WORKDIR / "loan_server.py"  # Added Loan Server Path
 
 # Load environment and validate Groq key
 load_dotenv()
@@ -88,9 +90,9 @@ async def get_agent_with_bank_tools():
     # If no candidate worked, raise last error
     raise RuntimeError(f"No Groq model candidates worked: {last_error}")
 
-
+#Adding comment as change
 async def call_bank_tool_direct(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-    """Bypass LLM: directly call FastMCP tool over stdio for reliability and speed."""
+    """Bypass LLM: directly call Bank FastMCP tool over stdio for reliability and speed."""
     server_params = StdioServerParameters(
         command="python3",
         args=[str(BANK_SERVER_PATH)],
@@ -109,9 +111,32 @@ async def call_bank_tool_direct(tool_name: str, arguments: Dict[str, Any]) -> Di
             # Fallback: return raw serialization
             return {"success": True, "raw": [c.__dict__ for c in result.content]}
 
+async def call_loan_tool_direct(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    """Bypass LLM: directly call Loan FastMCP tool over stdio."""
+    server_params = StdioServerParameters(
+        command="python3",
+        args=[str(LOAN_SERVER_PATH)],
+    )
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool(tool_name, arguments)
+            
+            # Parse result
+            for item in result.content:
+                if getattr(item, "type", None) == "text":
+                    try:
+                        # The loan tools return dictionaries directly, which FastMCP serializes to JSON strings
+                        return json.loads(item.text)
+                    except Exception:
+                        return {"success": True, "raw": item.text}
+            return {"success": True, "raw": [c.__dict__ for c in result.content]}
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})
+
+# --- Bank Routes ---
 
 @app.route("/create-account", methods=["POST"])
 def create_account_http():
@@ -154,6 +179,66 @@ def get_account_http():
         payload: Dict[str, Any] = request.get_json(force=True) or {}
         async def run():
             return await call_bank_tool_direct("get_account", payload)
+        result = asyncio.run(run())
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# --- Loan Routes ---
+
+@app.route("/loan/apply", methods=["POST"])
+def apply_loan_http():
+    """
+    Apply for a loan via the Loan MCP Server.
+    Expects JSON: { "amount": float, "pre_approved_limit": float, "pan_card_no": str, "phone_number": str, "account_number": str (optional) }
+    """
+    try:
+        payload: Dict[str, Any] = request.get_json(force=True) or {}
+        async def run():
+            return await call_loan_tool_direct("apply_for_loan", payload)
+        result = asyncio.run(run())
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/loan/verify-salary", methods=["POST"])
+def verify_salary_http():
+    """
+    Verify salary for a pending loan via the Loan MCP Server.
+    Expects JSON: { "loan_id": str, "monthly_salary": float }
+    """
+    try:
+        payload: Dict[str, Any] = request.get_json(force=True) or {}
+        async def run():
+            return await call_loan_tool_direct("verify_salary_eligibility", payload)
+        result = asyncio.run(run())
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/loan/status", methods=["GET", "POST"])
+def loan_status_http():
+    """
+    Check loan status via the Loan MCP Server.
+    Accepts 'identifier' via Query Param (GET) or JSON Body (POST).
+    """
+    try:
+        identifier = None
+        
+        # Handle POST
+        if request.method == "POST":
+            payload = request.get_json(force=True) or {}
+            identifier = payload.get("identifier")
+        
+        # Handle GET
+        if not identifier:
+            identifier = request.args.get("identifier")
+            
+        if not identifier:
+             return jsonify({"success": False, "error": "Missing 'identifier' (Loan ID, PAN, or Phone)"}), 400
+
+        async def run():
+            return await call_loan_tool_direct("get_loan_status", {"identifier": identifier})
         result = asyncio.run(run())
         return jsonify(result)
     except Exception as e:
