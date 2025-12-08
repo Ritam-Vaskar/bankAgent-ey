@@ -1,125 +1,111 @@
 // app/api/chat/createaccount/route.js
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
-import { auth } from "@/auth";
-import { useSession, signIn } from "next-auth/react"
+
+// NOTE: Removed unnecessary client-side import: 'next-auth/react'
 import CreateaccountChat from "@/models/CreateaccountChat";
 import CreateaccountMessage from "@/models/CreateaccountMessage";
 import CreateUserAccount from "@/models/CreateUserAccount";
 
-export async function POST(req,userId) {
-  try {
+// Establish DB connection once (best practice, though not strictly required here)
+// Note: Depending on your 'connectDB' implementation, you might want to call it once
+// at the start of your handler or trust the connection is handled by your lib/mongodb.
 
-    const { userId, chatId, message, fileUrl, seqno } = await req.json();
-
-    // Reuse existing chat or create new one
-    let chat = chatId
-      ? await CreateaccountChat.findById(chatId)
-      : await CreateaccountChat.findOne({ userId });
-
-    if (!chat) chat = await CreateaccountChat.create({ userId });
-
-    // save user message
-    if (message || fileUrl) {
-
-        //here use callback to save message
-        //and if successfully saved move to the next question in the flow
-
-      await CreateaccountMessage.create({
-        chatId: chat._id,
-        userId,
-        sender: "user",
-        message: message || "📎 Document Uploaded",
-        fileUrl: fileUrl || null,
-      });
+export async function POST(req) {
+    // 1. All body data is read and destructured in one go (CORRECTED)
+    const body = await req.json();
+    const { 
+        newchat, saveMessage, createNewAccount, userId, content, sender, chatId,
+        name, phone, email, aadharPhotoUrl, aadharNo, panPhotoUrl, panNo, 
+        address, AccountNumber,
+    } = body;
+    
+    // --- New Chat Creation ---
+    if (newchat) {
+        try {
+            // It's a good practice to ensure the DB connection is ready
+            await connectDB(); 
+            console.log("Inside new chat");
+            const chat = new CreateaccountChat({ userId ,isOpened: true });
+            await chat.save();
+            return NextResponse.json({ chatId: chat._id });
+        } catch (e) {
+            console.log("Error is :" + e);
+            return NextResponse.json({ error: e.message }, { status: 500 });
+        }
     }
-
-    // Get form for this specific chat
-    let form = await CreateUserAccount.findOne({ chatId: chat._id });
-
-    if (!form) {
-      form = await CreateUserAccount.create({
-        chatId: chat._id,
-        status: "initiated",
-      });
+    
+    // --- Message Saving ---
+    else if (saveMessage) {
+        try {
+            await connectDB(); 
+            const newMessage = new CreateaccountMessage({
+                chatId,
+                sender,
+                message: content
+            });
+            await newMessage.save();
+            return NextResponse.json({ data: "Message Successfully Saved" }, { status: 200 });
+        } catch (e) {
+            console.log("error in message saving :- " + e);
+            // Note: Use return here, not await
+            return NextResponse.json({ error: e.message }, { status: 500 }); 
+        }
     }
+    
+    // --- Account Creation ---
+    else if (createNewAccount) {
+        try {
+            await connectDB(); 
+            const newAccount = new CreateUserAccount({ // Added 'new' keyword
+                name, phone, email, aadharPhotoUrl, aadharNo, panPhotoUrl, panNo, 
+                address, AccountNumber
+            });
+            await newAccount.save();
+            
+            // 2. FIX: Corrected findByIdAndUpdate syntax 
+            await CreateaccountChat.findByIdAndUpdate(chatId, { isOpened: false });
+            
+            return NextResponse.json({ data: "Successfully Closed The Chat And Saved The Account Info in database" }, { status: 200 });
+        } catch (err) {
+            console.error("Chat createaccount error:", err);
+            return NextResponse.json({ error: err.message }, { status: 500 });
+        }
+    } 
+    
+    // --- Default Response (Improvement) ---
+    return NextResponse.json({ error: "Invalid action specified in request body" }, { status: 400 });
+}
 
-    let reply = { message: "", action: "continue" };
+// --------------------------------------------------------------------------------
 
-    // === Conversation Steps Handling ===
-    if (!form.name) {
-      if (!message) reply.message = "Please enter your name:";
-      else {
-        form.name = message;
-        await form.save();
-        reply.message = "Enter phone number:";
-      }
-    } else if (!form.phone) {
-      if (!message) reply.message = "Enter phone number:";
-      else {
-        form.phone = message;
-        await form.save();
-        reply.message = "Enter your email:";
-      }
-    } else if (!form.email) {
-      if (!message) reply.message = "Enter email:";
-      else {
-        form.email = message;
-        await form.save();
-        reply.message = "Enter your address:";
-      }
-    } else if (!form.address) {
-      if (!message) reply.message = "Enter address:";
-      else {
-        form.address = message;
-        await form.save();
-        reply.message = "Upload Aadhaar document";
-        reply.action = "request_upload";
-        reply.docType = "aadhaar";
-      }
-    } else if (!form.aadharPhotoUrl) {
-      if (!fileUrl) {
-        reply.message = "Upload Aadhaar document";
-        reply.action = "request_upload";
-        reply.docType = "aadhaar";
-      } else {
-        form.aadharPhotoUrl = fileUrl;
-        await form.save();
-        reply.message = "Upload PAN document";
-        reply.action = "request_upload";
-        reply.docType = "pan";
-      }
-    } else if (!form.panPhotoUrl) {
-      if (!fileUrl) {
-        reply.message = "Upload PAN document";
-        reply.action = "request_upload";
-        reply.docType = "pan";
-      } else {
-        form.panPhotoUrl = fileUrl;
-        form.status = "completed";
-        form.accountNumber = "AC" + Date.now();
-        await form.save();
+export async function GET(req) {
+    // 3. FIX: Correctly access query parameters from the URL
+    const userId = req.nextUrl.searchParams.get("userId");
+    const chatId = req.nextUrl.searchParams.get("chatId");
 
-        reply.message = `🎉 Account Created!\nAccount Number: ${form.accountNumber}`;
-        reply.action = "complete";
-      }
+    try {
+        await connectDB();
+        
+        if (userId) {
+            // Fetch all chats for a specific user
+            const allChat = await CreateaccountChat.find({ userId });
+            // send all chat As name of the chat
+            const chatName = allChat.map(chat => chat.name);
+            return NextResponse.json({ chatName });
+        } else if (chatId) {
+            // Fetch messages for a specific chat
+            // You might want to get the chat details using _id, but chatId for messages is fine
+            const allChat = await CreateaccountChat.find({ _id: chatId }); 
+            const Allmessages = await CreateaccountMessage.find({ chatId });
+
+            return NextResponse.json({ allChat, Allmessages });
+        } else {
+            // Handle case where neither parameter is provided (Improvement)
+            return NextResponse.json({ error: "Missing 'userId' or 'chatId' query parameter" }, { status: 400 });
+        }
+    } catch (error) {
+        console.error("Chat Fetching error:", error);
+        return NextResponse.json({ error: "Failed to fetch chat data" }, { status: 500 });
     }
-
-    // save bot response in chat
-    await CreateaccountMessage.create({
-      chatId: chat._id,
-      userId,
-      sender: "bot",
-      message: reply.message,
-    });
-
-    return NextResponse.json({
-      chatId: chat._id.toString(),
-      ...reply,
-    });
-
-  } catch (err) {
-    console.error("Chat createaccount error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
 }

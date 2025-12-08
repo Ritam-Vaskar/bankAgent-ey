@@ -37,6 +37,7 @@ export default function GlobalChat() {
         router.push("/Chat/LoanService");
       } 
       else if (data.message.includes("/api/chat/account")) {
+        
         router.push("/Chat/CreateAccount");
      
       }

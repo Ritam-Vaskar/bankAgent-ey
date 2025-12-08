@@ -7,7 +7,7 @@ const messageSchema = new mongoose.Schema(
       ref: "CreateaccountChat", // points to the chat collection
       required: true,
     },
-
+    
     sender: {
       type: String,
       enum: ["user", "bot"],

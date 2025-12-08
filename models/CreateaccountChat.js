@@ -7,7 +7,7 @@ const createaccountChatSchema = new mongoose.Schema(
       ref: "User", 
       required: true 
     },
-
+    isOpened : { type: Boolean, required: true },
   },
 
   { timestamps: true }
