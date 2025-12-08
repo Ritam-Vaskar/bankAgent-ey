@@ -90,7 +90,7 @@ async def get_agent_with_bank_tools():
     # If no candidate worked, raise last error
     raise RuntimeError(f"No Groq model candidates worked: {last_error}")
 
-
+#Adding comment as change
 async def call_bank_tool_direct(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
     """Bypass LLM: directly call Bank FastMCP tool over stdio for reliability and speed."""
     server_params = StdioServerParameters(
