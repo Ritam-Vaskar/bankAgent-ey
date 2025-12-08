@@ -3,7 +3,7 @@
 import { useSession, signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import Dashboard from "@/components/Dashboard"
+import Globalchat from "@/components/Globalchat.jsx"
 
 export default function Home() {
   const { data: session, status } = useSession()
@@ -22,10 +22,11 @@ export default function Home() {
       </div>
     )
   }
-
+console.log("Session data:", session)
   if (!session) {
+
     return null
   }
 
-  return <Dashboard />
+  return <Globalchat />
 }

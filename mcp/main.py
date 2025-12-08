@@ -92,7 +92,7 @@ async def get_agent_with_bank_tools():
 async def call_bank_tool_direct(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
     """Bypass LLM: directly call FastMCP tool over stdio for reliability and speed."""
     server_params = StdioServerParameters(
-        command="python3",
+        command="python",
         args=[str(BANK_SERVER_PATH)],
     )
     async with stdio_client(server_params) as (read, write):

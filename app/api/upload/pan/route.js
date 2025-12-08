@@ -25,14 +25,14 @@ export async function POST(req) {
     if (file.type !== "application/pdf") {
       return NextResponse.json({ error: "Invalid file type. Only PDF files are accepted." }, { status: 400 })
     }
-
+    
     // Create mock file URL
     const fileName = `pan-${session.user.id}-${Date.now()}.pdf`
     const fileUrl = `/uploads/pan/${fileName}`
 
     // Update onboarding record with file reference
     await Onboarding.findOneAndUpdate({ userId: session.user.id }, { "data.panUrl": fileUrl }, { upsert: true })
-
+    
     console.log("[v0] PAN file uploaded:", fileUrl)
 
     return NextResponse.json({

@@ -7,13 +7,11 @@ import Onboarding from "@/models/Onboarding"
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!session?.user?.id) 
+    {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-
     await connectDB()
-
     const formData = await req.formData()
     const file = formData.get("file")
 
@@ -22,6 +20,7 @@ export async function POST(req) {
     }
 
     // Validate file type
+
     const validTypes = ["application/pdf", "application/xml", "text/xml"]
     if (!validTypes.includes(file.type)) {
       return NextResponse.json({ error: "Invalid file type. Only PDF and XML files are accepted." }, { status: 400 })
