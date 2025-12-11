@@ -16,7 +16,7 @@ export async function POST(req) {
     const body = await req.json();
     const { 
         newchat, saveMessage, createNewAccount, userId, content, sender, chatId,
-        name, phone, email, aadharPhotoUrl, aadharNo, panPhotoUrl, panNo, 
+        name, phone, email, aadharPhotoUrl, aadharNo, panPhotoUrl, panNo, role,
         address, AccountNumber,
     } = body;
     
@@ -39,11 +39,14 @@ export async function POST(req) {
     else if (saveMessage) {
         try {
             await connectDB(); 
+       
             const newMessage = new CreateaccountMessage({
                 chatId,
-                sender,
+                userId,
+                sender:role,
                 message: content
             });
+        
             await newMessage.save();
             return NextResponse.json({ data: "Message Successfully Saved" }, { status: 200 });
         } catch (e) {
@@ -88,11 +91,16 @@ export async function GET(req) {
     try {
         await connectDB();
         
-        if (userId) {
+        if (!chatId) {
             // Fetch all chats for a specific user
             const allChat = await CreateaccountChat.find({ userId });
             // send all chat As name of the chat
-            const chatName = allChat.map(chat => chat.name);
+            //send chatname as well as chatid
+
+            const chatName = allChat.map((chat) => ({
+                chatId: chat._id,
+                chatName: chat.name,
+            }));
             return NextResponse.json({ chatName });
         } else if (chatId) {
             // Fetch messages for a specific chat

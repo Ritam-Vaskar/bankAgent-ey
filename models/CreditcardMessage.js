@@ -7,6 +7,13 @@ const messageSchema = new mongoose.Schema(
       ref: "CreditcardChat", // points to the chat collection
       required: true,
     },
+    userId :
+    {
+      type : mongoose.Schema.Types.ObjectId,
+      ref : "User",
+      required : true
+
+    },
 
     sender: {
       type: String,

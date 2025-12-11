@@ -18,6 +18,10 @@ const messageSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    index : 
+    {
+      type : Number
+    }
   },
 
   { timestamps: true }
