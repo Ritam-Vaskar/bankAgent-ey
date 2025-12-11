@@ -83,6 +83,7 @@ export async function GET(req) {
     // 3. FIX: Correctly access query parameters from the URL
     const userId = req.nextUrl.searchParams.get("userId");
     const chatId = req.nextUrl.searchParams.get("chatId");
+    
 
     try {
         await connectDB();
