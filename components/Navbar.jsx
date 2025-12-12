@@ -116,7 +116,7 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
                   </button>
                   
                   <button
-                    onClick={() => signOut()}
+                    onClick={() => signOut({ callbackUrl: '/login', redirect: true })}
                     className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-red-500/10 transition-colors text-left"
                   >
                     <LogOut size={18} className="text-red-400" />
