@@ -15,13 +15,43 @@ export async function POST(req) {
     // 1. All body data is read and destructured in one go (CORRECTED)
     const body = await req.json();
     const { 
-        newchat, saveMessage, createNewAccount, userId, content, sender, chatId,
+        newchat, saveMessage, createNewAccount, getchat, userId, content, sender, chatId,
         name, phone, email, aadharPhotoUrl, aadharNo, panPhotoUrl, panNo, role,
         address, AccountNumber,
     } = body;
     
+    // --- Get Specific Chat ---
+    if (getchat) {
+        try {
+            await connectDB();
+            console.log("Fetching account chat:", chatId);
+            
+            // Fetch chat details and messages
+            const chat = await CreateaccountChat.findById(chatId);
+            if (!chat) {
+                return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+            }
+            
+            const messages = await CreateaccountMessage.find({ chatId });
+            console.log("Found", messages.length, "messages for chat", chatId);
+            
+            return NextResponse.json({ 
+                chat: {
+                    _id: chat._id,
+                    userId: chat.userId,
+                    isOpened: chat.isOpened,
+                    createdAt: chat.createdAt,
+                },
+                messages: messages 
+            });
+        } catch (error) {
+            console.error("Error fetching account chat:", error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+    }
+    
     // --- New Chat Creation ---
-    if (newchat) {
+    else if (newchat) {
         try {
             // It's a good practice to ensure the DB connection is ready
             await connectDB(); 

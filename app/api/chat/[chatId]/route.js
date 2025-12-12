@@ -7,6 +7,9 @@ import Chat from "@/models/Chat";
 // Get specific chat
 export async function GET(req, { params }) {
   try {
+    // Await params in Next.js 15
+    const { chatId } = await params;
+    
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -15,7 +18,7 @@ export async function GET(req, { params }) {
     await connectDB();
 
     const chat = await Chat.findOne({
-      _id: params.chatId,
+      _id: chatId,
       userId: session.user.id,
     }).lean();
 
@@ -36,6 +39,9 @@ export async function GET(req, { params }) {
 // Delete chat
 export async function DELETE(req, { params }) {
   try {
+    // Await params in Next.js 15
+    const { chatId } = await params;
+    
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,7 +50,7 @@ export async function DELETE(req, { params }) {
     await connectDB();
 
     const result = await Chat.deleteOne({
-      _id: params.chatId,
+      _id: chatId,
       userId: session.user.id,
     });
 
