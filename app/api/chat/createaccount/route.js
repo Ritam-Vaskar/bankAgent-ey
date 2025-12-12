@@ -39,12 +39,13 @@ export async function POST(req) {
     else if (saveMessage) {
         try {
             await connectDB(); 
-       
+            console.log("the informations are " + chatId + " " + role + " ");
+            console.log("the content is :- "+content);
             const newMessage = new CreateaccountMessage({
                 chatId,
-                userId,
                 sender:role,
-                message: content
+                message: content,
+            
             });
         
             await newMessage.save();
@@ -62,14 +63,17 @@ export async function POST(req) {
             await connectDB(); 
             const newAccount = new CreateUserAccount({ // Added 'new' keyword
                 name, phone, email, aadharPhotoUrl, aadharNo, panPhotoUrl, panNo, 
-                address, AccountNumber
+                address
             });
+            newAccount.AccountNumber = chatId;
             await newAccount.save();
+            //find an unique account Number 
+
             
             // 2. FIX: Corrected findByIdAndUpdate syntax 
             await CreateaccountChat.findByIdAndUpdate(chatId, { isOpened: false });
             
-            return NextResponse.json({ data: "Successfully Closed The Chat And Saved The Account Info in database" }, { status: 200 });
+            return NextResponse.json({ data: "Successfully Closed The Chat And Saved The Account Info in database" , accountNumber: newAccount.AccountNumber}, { status: 200 });
         } catch (err) {
             console.error("Chat createaccount error:", err);
             return NextResponse.json({ error: err.message }, { status: 500 });
