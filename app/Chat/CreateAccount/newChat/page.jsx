@@ -165,7 +165,7 @@ export default function CreateAccountChatPage({ searchParams }) {
       console.log("Account Number" + res.data.accountNumber)
       alert("Account Created Successfully!");
 
-      router.push("/chat/createaccount");
+      router.push("/Chat/CreateAccount");
       return;
     }
 

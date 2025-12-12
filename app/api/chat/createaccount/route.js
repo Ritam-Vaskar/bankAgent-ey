@@ -90,7 +90,7 @@ export async function GET(req) {
     // 3. FIX: Correctly access query parameters from the URL
     const userId = req.nextUrl.searchParams.get("userId");
     const chatId = req.nextUrl.searchParams.get("chatId");
-    
+    console.log("userId:", userId, "chatId:", chatId);
 
     try {
         await connectDB();
@@ -100,10 +100,10 @@ export async function GET(req) {
             const allChat = await CreateaccountChat.find({ userId });
             // send all chat As name of the chat
             //send chatname as well as chatid
-
+            console.log("allChat:", allChat);
             const chatName = allChat.map((chat) => ({
                 chatId: chat._id,
-                chatName: chat.name,
+                
             }));
             return NextResponse.json({ chatName });
         } else if (chatId) {
@@ -111,8 +111,8 @@ export async function GET(req) {
             // You might want to get the chat details using _id, but chatId for messages is fine
             const allChat = await CreateaccountChat.find({ _id: chatId }); 
             const Allmessages = await CreateaccountMessage.find({ chatId });
-
-            return NextResponse.json({ allChat, Allmessages });
+            console.log("All messages are :- ", Allmessages);
+            return NextResponse.json({ Allmessages });
         } else {
             // Handle case where neither parameter is provided (Improvement)
             return NextResponse.json({ error: "Missing 'userId' or 'chatId' query parameter" }, { status: 400 });
