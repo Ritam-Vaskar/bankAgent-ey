@@ -42,38 +42,34 @@ export default function GlobalChat() {
     try {
       setLoading(true);
       console.log("Loading chat:", chatId, "Type:", chatType);
-      
+
       let response;
       let formattedMessages = [];
-      
+
       if (chatType === "account") {
-        // Load account creation chat
         response = await axios.post("/api/chat/createaccount", {
           getchat: true,
           chatId: chatId
         });
         console.log("Account chat response:", response.data);
-        
-        // Account creation chats have messages in response.data.messages
+
         formattedMessages = (response.data.messages || []).map(msg => ({
           role: msg.sender || msg.role,
           content: msg.message || msg.content,
           timestamp: msg.createdAt || msg.timestamp || new Date(),
         }));
       } else {
-        // Load general chat
         response = await axios.get(`/api/chat/${chatId}`);
         const chat = response.data.chat;
         console.log("General chat loaded:", chat);
-        
-        // General chats have messages in chat.messages
+
         formattedMessages = (chat.messages || []).map(msg => ({
           role: msg.role,
           content: msg.content,
           timestamp: msg.timestamp || new Date(),
         }));
       }
-      
+
       setCurrentChatId(chatId);
       setMessages(formattedMessages);
       console.log("Messages set:", formattedMessages.length, "messages");
@@ -127,7 +123,6 @@ export default function GlobalChat() {
       const data = res.data;
       const response = data.message;
 
-      // Handle ACCOUNT_EXISTS case
       if (response.includes("ACCOUNT_EXISTS")) {
         const botMsg = {
           role: "bot",
@@ -137,7 +132,6 @@ export default function GlobalChat() {
         setMessages((prev) => [...prev, botMsg]);
         await saveMessage(botMsg.content, "bot");
       }
-      // Handle NEED_ACCOUNT_FIRST case
       else if (response.includes("NEED_ACCOUNT_FIRST")) {
         const service = response.split("|")[1];
         const serviceName = service === "loan" ? "loan" : "credit card";
@@ -149,7 +143,6 @@ export default function GlobalChat() {
         setMessages((prev) => [...prev, botMsg]);
         await saveMessage(botMsg.content, "bot");
       }
-      // Handle CHAT response (general conversation)
       else if (response.startsWith("CHAT|")) {
         const chatResponse = response.replace("CHAT|", "");
         const botMsg = {
@@ -160,7 +153,6 @@ export default function GlobalChat() {
         setMessages((prev) => [...prev, botMsg]);
         await saveMessage(botMsg.content, "bot");
       }
-      // Handle Loan Service redirect
       else if (response.includes("/api/chat/loan")) {
         const botMsg = {
           role: "bot",
@@ -169,12 +161,11 @@ export default function GlobalChat() {
         };
         setMessages((prev) => [...prev, botMsg]);
         await saveMessage(botMsg.content, "bot");
-        
+
         setRedirecting(true);
         setRedirectMessage("Redirecting to Loan Service...");
         setTimeout(() => router.push("/Chat/LoanService"), 1000);
       }
-      // Handle Create Account redirect
       else if (response.includes("/api/chat/account")) {
         const botMsg = {
           role: "bot",
@@ -183,7 +174,7 @@ export default function GlobalChat() {
         };
         setMessages((prev) => [...prev, botMsg]);
         await saveMessage(botMsg.content, "bot");
-        
+
         setRedirecting(true);
         setRedirectMessage("Preparing account creation...");
         setTimeout(async () => {
@@ -194,7 +185,6 @@ export default function GlobalChat() {
           router.push(`/Chat/CreateAccount/newChat?userId=${session?.user?.id}&chatId=${accountRes.data.chatId}`);
         }, 1000);
       }
-      // Handle Credit Card Service redirect
       else if (response.includes("/api/chat/creditcard")) {
         const botMsg = {
           role: "bot",
@@ -203,12 +193,11 @@ export default function GlobalChat() {
         };
         setMessages((prev) => [...prev, botMsg]);
         await saveMessage(botMsg.content, "bot");
-        
+
         setRedirecting(true);
         setRedirectMessage("Redirecting to Credit Card Service...");
         setTimeout(() => router.push("/Chat/Creditcardservice"), 1000);
       }
-      // Fallback for any other response
       else {
         const botMsg = {
           role: "bot",
@@ -231,132 +220,129 @@ export default function GlobalChat() {
     setLoading(false);
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
-      <Navbar 
-        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} 
+    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
+      <Navbar
+        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         sidebarOpen={sidebarOpen}
       />
+
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar 
-          isOpen={sidebarOpen} 
+        <Sidebar
+          isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           activeChat={currentChatId}
           onChatSelect={loadChat}
           onNewChat={createNewChat}
           userId={session?.user?.id}
         />
-        <div className="flex-1 flex flex-col lg:w-[70%] bg-slate-900/50">
-          {/* Chat Header */}
-          <div className="px-6 py-4 border-b border-slate-800/50 bg-slate-900/80 backdrop-blur-sm">
-            <h2 className="text-lg font-semibold text-slate-200">AI Banking Assistant</h2>
-            <p className="text-xs text-slate-400 mt-1">Secure & Intelligent Banking Support</p>
+
+        <div className="flex-1 flex flex-col bg-white relative overflow-hidden">
+          {/* Chat Header - Fixed */}
+          <div className="flex-shrink-0 px-8 py-5 border-b border-gray-200 bg-white">
+            <h2 className="text-xl font-semibold text-gray-900 mb-1">AI Banking Assistant</h2>
+            <p className="text-sm text-gray-500">Secure & Intelligent Banking Support</p>
           </div>
 
-          {/* Chat Messages - Fixed Height with Scroll */}
-          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 scroll-smooth">
+          {/* Chat Messages - Scrollable Area */}
+          <div className="flex-1 overflow-y-auto px-8 py-6">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full space-y-6">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/20">
-                  <Bot size={36} className="text-white" />
+                <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Bot size={32} className="text-white" />
                 </div>
-                <div className="text-center max-w-lg">
-                  <h2 className="text-2xl font-bold mb-3 text-slate-100">
+                <div className="text-center max-w-2xl">
+                  <h2 className="text-2xl font-semibold mb-3 text-gray-900">
                     Welcome to Secure Banking
                   </h2>
-                  <p className="text-slate-400 text-sm leading-relaxed mb-4">
+                  <p className="text-gray-600 text-base mb-6">
                     Your intelligent AI assistant for all banking needs. I can help you with:
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-left">
-                    <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-                      <p className="text-blue-400 font-semibold text-sm mb-1">🏦 Account Creation</p>
-                      <p className="text-slate-400 text-xs">Open a new bank account</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <p className="text-blue-600 font-semibold mb-1">🏦 Account Creation</p>
+                      <p className="text-gray-600 text-sm">Open a new bank account</p>
                     </div>
-                    <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-                      <p className="text-green-400 font-semibold text-sm mb-1">💰 Loan Services</p>
-                      <p className="text-slate-400 text-xs">Apply for personal loans</p>
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <p className="text-green-600 font-semibold mb-1">💰 Loan Services</p>
+                      <p className="text-gray-600 text-sm">Apply for personal loans</p>
                     </div>
-                    <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-                      <p className="text-purple-400 font-semibold text-sm mb-1">💳 Credit Cards</p>
-                      <p className="text-slate-400 text-xs">Get premium credit cards</p>
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <p className="text-purple-600 font-semibold mb-1">💳 Credit Cards</p>
+                      <p className="text-gray-600 text-sm">Get premium credit cards</p>
                     </div>
                   </div>
-                  <p className="text-slate-500 text-xs mt-4">
-                    💬 Just tell me what you'd like to do, and I'll guide you!
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-3 justify-center">
-                  <button 
-                    onClick={() => setInput("I want to open a new account")}
-                    className="px-5 py-2.5 bg-blue-700/80 hover:bg-blue-600 rounded-lg text-sm font-medium transition-all border border-blue-600/30 shadow-lg hover:shadow-blue-500/20"
-                  >
-                    Open New Account
-                  </button>
-                  <button 
-                    onClick={() => setInput("I need a loan")}
-                    className="px-5 py-2.5 bg-slate-800/80 hover:bg-slate-700 rounded-lg text-sm font-medium transition-all border border-slate-700/50"
-                  >
-                    Apply for Loan
-                  </button>
-                  <button 
-                    onClick={() => setInput("I want a credit card")}
-                    className="px-5 py-2.5 bg-slate-800/80 hover:bg-slate-700 rounded-lg text-sm font-medium transition-all border border-slate-700/50"
-                  >
-                    Get Credit Card
-                  </button>
+
+                  {/* Encryption message - only on welcome screen */}
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mb-6">
+                    <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"></path>
+                    </svg>
+                    <span>End-to-end encrypted • Secure Banking Platform</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 justify-center">
+                    <button
+                      onClick={() => setInput("I want to open a new account")}
+                      className="p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-sm font-medium transition-all duration-300 flex items-center justify-center shadow-md hover:scale-105"
+                    >
+                      Open New Account
+                    </button>
+                    <button
+                      onClick={() => setInput("I need a loan")}
+                      className="p-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Apply for Loan
+                    </button>
+                    <button
+                      onClick={() => setInput("I want a credit card")}
+                      className="p-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Get Credit Card
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
-            
+
             {/* Messages */}
             {messages.length > 0 && messages.map((msg, index) => (
-              <div key={`msg-${index}-${msg.timestamp}`} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-[fade-in_0.3s_ease-in]`}>
-                <div className={`flex gap-3 max-w-[80%] ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-                  {/* Avatar */}
-                  <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center shadow-lg ${
-                    msg.role === "user" 
-                      ? "bg-gradient-to-br from-blue-600 to-indigo-700" 
-                      : "bg-gradient-to-br from-slate-700 to-slate-800 border border-slate-600/50"
-                  }`}>
-                    {msg.role === "user" ? <User size={18} className="text-white" /> : <Bot size={18} className="text-blue-400" />}
-                  </div>
-                  
-                  {/* Message Content */}
-                  <div className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                    <div className={`px-4 py-3 rounded-2xl shadow-lg ${
-                      msg.role === "user" 
-                        ? "bg-gradient-to-br from-blue-700 to-indigo-700 text-white rounded-br-sm" 
-                        : "bg-slate-800/90 text-slate-100 rounded-bl-sm border border-slate-700/50"
+              <div key={`msg-${index}-${msg.timestamp}`} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-4`}>
+                <div className={`flex gap-3 max-w-[75%] ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                  <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${msg.role === "user"
+                    ? "bg-blue-600"
+                    : "bg-gray-200"
                     }`}>
-                      <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                    {msg.role === "user" ? <User size={18} className="text-white" /> : <Bot size={18} className="text-gray-700" />}
+                  </div>
+
+                  <div className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                    <div className={`px-4 py-3 rounded-lg ${msg.role === "user"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-900 border border-gray-200"
+                      }`}>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                     </div>
-                    <span className="text-[11px] text-slate-500 mt-1.5 px-1">
+                    <span className="text-xs text-gray-400 mt-1.5">
                       {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
                 </div>
               </div>
             ))}
-            
+
             {/* Loading Animation */}
             {loading && (
-              <div className="flex justify-start">
+              <div className="flex justify-start mb-4">
                 <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800 border border-slate-600/50 shadow-lg">
-                    <Bot size={18} className="text-blue-400" />
+                  <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-gray-200">
+                    <Bot size={18} className="text-gray-700" />
                   </div>
-                  <div className="px-4 py-3 bg-slate-800/90 rounded-2xl rounded-bl-sm border border-slate-700/50 shadow-lg">
+                  <div className="px-4 py-3 bg-gray-100 rounded-lg border border-gray-200">
                     <div className="flex gap-1.5">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: "0.15s"}}></div>
-                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: "0.3s"}}></div>
+                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "0.15s" }}></div>
+                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: "0.3s" }}></div>
                     </div>
                   </div>
                 </div>
@@ -367,18 +353,13 @@ export default function GlobalChat() {
 
           {/* Redirecting Overlay */}
           {redirecting && (
-            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50">
-              <div className="bg-slate-800/90 border border-blue-500/30 rounded-2xl p-8 shadow-2xl max-w-md mx-4">
+            <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-2xl max-w-md mx-4">
                 <div className="flex flex-col items-center space-y-4">
-                  <div className="relative">
-                    <div className="w-20 h-20 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-12 h-12 bg-blue-600 rounded-full opacity-20 animate-pulse"></div>
-                    </div>
-                  </div>
+                  <div className="w-16 h-16 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
                   <div className="text-center">
-                    <h3 className="text-xl font-semibold text-white mb-2">{redirectMessage}</h3>
-                    <p className="text-slate-400 text-sm">Please wait...</p>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{redirectMessage}</h3>
+                    <p className="text-gray-500 text-sm">Please wait...</p>
                   </div>
                 </div>
               </div>
@@ -386,7 +367,7 @@ export default function GlobalChat() {
           )}
 
           {/* Input Area - Fixed at Bottom */}
-          <div className="px-6 py-4 border-t border-slate-800/50 bg-slate-900/90 backdrop-blur-sm">
+          <div className="flex-shrink-0 px-8 py-4 border-t border-gray-200 bg-white">
             <div className="flex items-end gap-3">
               <div className="flex-1">
                 <textarea
@@ -404,22 +385,19 @@ export default function GlobalChat() {
                     }
                   }}
                   placeholder="Type your message... (Press Enter to send)"
-                  className="w-full px-4 py-3 bg-slate-800/80 border border-slate-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600/50 focus:border-blue-600/50 text-white placeholder-slate-500 text-[15px] resize-none transition-all"
-                  style={{minHeight: '48px', maxHeight: '120px'}}
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-gray-900 placeholder-gray-400 text-sm resize-none transition-all"
+                  style={{ minHeight: '48px', maxHeight: '120px' }}
                 />
               </div>
               <button
                 onClick={sendMessage}
                 disabled={loading || !input.trim()}
-                className="px-5 py-3 bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-600 hover:to-indigo-600 disabled:from-slate-700 disabled:to-slate-700 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-blue-500/20 flex items-center gap-2 font-medium text-sm"
+                className="p-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 rounded-lg transition-all disabled:cursor-not-allowed shadow-sm flex items-center gap-2 font-medium text-sm text-white"
               >
                 <Send size={18} />
                 <span className="hidden sm:inline">Send</span>
               </button>
             </div>
-            <p className="text-[11px] text-slate-500 mt-2 text-center">
-              🔒 End-to-end encrypted • Secure Banking Platform
-            </p>
           </div>
         </div>
       </div>
