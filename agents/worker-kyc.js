@@ -1,4 +1,5 @@
 import { callGemini, createToolDefinition } from "@/lib/gemini-client"
+import Axios from "axios"
 
 const WORKER_KYC_SYSTEM_PROMPT = `You are Worker-KYC Agent.
 Your job: verify Aadhaar & PAN documents.
@@ -78,6 +79,13 @@ export async function mockVerifyAadhaar(aadhaarUrl) {
   }
 }
 
+export async function verifyDocuments(aadhaarUrl,panUrl) {
+ // pan_card_no: str, aadhar_no: str
+ const res = await Axios.post('http://127.0.0.1:5000//validate-documents', {pan_card_no: panUrl, aadhar_no: aadhaarUrl});
+ const response = res.data;
+  return response;
+  // Mock DigiLocker respon
+}
 export async function mockVerifyPan(panUrl) {
   // Mock DigiLocker response
   return {

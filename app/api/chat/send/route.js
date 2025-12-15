@@ -56,8 +56,8 @@ export async function POST(req) {
 
       try {
         // Mock KYC verification
-        const kycResult = await mockVerifyAadhaar(onboarding.data.aadhaarUrl)
-        const panResult = await mockVerifyPan(onboarding.data.panUrl)
+        // const kycResult = await mockVerifyAadhaar(onboarding.data.aadhaarUrl)
+        // const panResult = await mockVerifyPan(onboarding.data.panUrl)
 
         if (kycResult.verified && panResult.verified) {
           onboarding.data.aadhaarData = kycResult.extracted
@@ -115,7 +115,7 @@ export async function POST(req) {
         onboarding = updatedOnboarding
       }
     }
-
+    
     console.log("[v0] Chat response:", response)
 
     return NextResponse.json(response)
