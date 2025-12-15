@@ -6,6 +6,7 @@ import ChatWindow from "./ChatWindow"
 import InputField from "./InputField"
 import MenuButtons from "./MenuButtons"
 import FileUploadModal from "./FileUploadModal"
+import Link from "next/link"
 
 export default function Dashboard() {
   const { data: session } = useSession()
@@ -104,12 +105,16 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 bg-white/10 backdrop-blur-lg rounded-full px-4 py-2 border border-white/20">
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-3 bg-white/10 backdrop-blur-lg rounded-full px-4 py-2 border border-white/20 hover:bg-white/20 transition-colors cursor-pointer"
+            >
               {session?.user?.image && (
                 <img src={session.user.image} alt="Profile" className="w-8 h-8 rounded-full border-2 border-white" />
               )}
               <span className="text-sm font-medium">{session?.user?.name}</span>
-            </div>
+            </Link>
+
             <button
               onClick={() => signOut()}
               className="px-5 py-2 bg-white text-blue-600 rounded-full hover:bg-blue-50 text-sm font-semibold transition-all duration-300 hover:scale-105 shadow-lg"

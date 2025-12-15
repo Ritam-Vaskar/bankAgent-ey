@@ -1,0 +1,77 @@
+{
+	"source": "mock-loan-history",
+	"version": "1.0.0",
+	"lastUpdated": "2025-12-15",
+	"entries": [
+		{
+			"pan": "ABCDE1234F",
+			"loanType": "Home Loan",
+			"loanAmount": 2500000,
+			"currentAmountPaid": 850000,
+			"currentStatus": "Active"
+		},
+		{
+			"pan": "PQRSX5678Z",
+			"loanType": "Personal Loan",
+			"loanAmount": 500000,
+			"currentAmountPaid": 275000,
+			"currentStatus": "Active"
+		},
+		{
+			"pan": "LMNOP2345Q",
+			"loanType": "Car Loan",
+			"loanAmount": 900000,
+			"currentAmountPaid": 900000,
+			"currentStatus": "Closed"
+		},
+		{
+			"pan": "UVWXY6789A",
+			"loanType": "Education Loan",
+			"loanAmount": 1200000,
+			"currentAmountPaid": 300000,
+			"currentStatus": "Active"
+		},
+		{
+			"pan": "GHJKL0123M",
+			"loanType": "Business Loan",
+			"loanAmount": 3500000,
+			"currentAmountPaid": 450000,
+			"currentStatus": "Overdue"
+		},
+		{
+			"pan": "TRSTY4567N",
+			"loanType": "Gold Loan",
+			"loanAmount": 300000,
+			"currentAmountPaid": 150000,
+			"currentStatus": "Active"
+		},
+		{
+			"pan": "QWERT1234U",
+			"loanType": "Home Loan",
+			"loanAmount": 1800000,
+			"currentAmountPaid": 600000,
+			"currentStatus": "Active"
+		},
+		{
+			"pan": "ASDFG7890P",
+			"loanType": "Personal Loan",
+			"loanAmount": 350000,
+			"currentAmountPaid": 350000,
+			"currentStatus": "Closed"
+		},
+		{
+			"pan": "ZXCVB3456R",
+			"loanType": "Car Loan",
+			"loanAmount": 1200000,
+			"currentAmountPaid": 250000,
+			"currentStatus": "Active"
+		},
+		{
+			"pan": "PLMKO9012J",
+			"loanType": "Business Loan",
+			"loanAmount": 2200000,
+			"currentAmountPaid": 100000,
+			"currentStatus": "Active"
+		}
+	]
+}

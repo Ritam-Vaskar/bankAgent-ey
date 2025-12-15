@@ -1,0 +1,128 @@
+{
+	"source": "mock-bank-accounts",
+	"version": "1.0.0",
+	"lastUpdated": "2025-12-15",
+	"entries": [
+		{
+			"pan": "ABCDE1234F",
+			"name": "Rohan Sharma",
+			"bankName": "State Bank of India",
+			"accountNumber": "123456789012",
+			"amount": 154320.75,
+			"ifsc": "SBIN0001234",
+			"branchName": "Andheri East",
+			"state": "Maharashtra",
+			"valid": true
+		},
+		{
+			"pan": "PQRSX5678Z",
+			"name": "Ananya Gupta",
+			"bankName": "HDFC Bank",
+			"accountNumber": "987654321098",
+			"amount": 82450.00,
+			"ifsc": "HDFC0005678",
+			"branchName": "Connaught Place",
+			"state": "Delhi",
+			"valid": true
+		},
+		{
+			"pan": "LMNOP2345Q",
+			"name": "Vivek Kumar",
+			"bankName": "ICICI Bank",
+			"accountNumber": "445566778899",
+			"amount": 20340.10,
+			"ifsc": "ICIC0002345",
+			"branchName": "Indiranagar",
+			"state": "Karnataka",
+			"valid": true
+		},
+		{
+			"pan": "UVWXY6789A",
+			"name": "Sneha Iyer",
+			"bankName": "Axis Bank",
+			"accountNumber": "556677889900",
+			"amount": 502345.99,
+			"ifsc": "UTIB0006789",
+			"branchName": "T. Nagar",
+			"state": "Tamil Nadu",
+			"valid": true
+		},
+		{
+			"pan": "GHJKL0123M",
+			"name": "Arjun Singh",
+			"bankName": "Punjab National Bank",
+			"accountNumber": "110022003300",
+			"amount": 12050.00,
+			"ifsc": "PUNB0010123",
+			"branchName": "Hazratganj",
+			"state": "Uttar Pradesh",
+			"valid": true
+		},
+		{
+			"pan": "TRSTY4567N",
+			"name": "Priya Patel",
+			"bankName": "Kotak Mahindra Bank",
+			"accountNumber": "778899001122",
+			"amount": 93210.45,
+			"ifsc": "KKBK0004567",
+			"branchName": "Navrangpura",
+			"state": "Gujarat",
+			"valid": true
+		},
+		{
+			"pan": "QWERT1234U",
+			"name": "Aman Verma",
+			"bankName": "Bank of Baroda",
+			"accountNumber": "223344556677",
+			"amount": 4500.00,
+			"ifsc": "BARB0RAJAST",
+			"branchName": "MI Road",
+			"state": "Rajasthan",
+			"valid": true
+		},
+		{
+			"pan": "ASDFG7890P",
+			"name": "Neha Kapoor",
+			"bankName": "Canara Bank",
+			"accountNumber": "665544332211",
+			"amount": 180700.00,
+			"ifsc": "CNRB0007890",
+			"branchName": "Sector 17",
+			"state": "Punjab",
+			"valid": true
+		},
+		{
+			"pan": "ZXCVB3456R",
+			"name": "Deepak Mishra",
+			"bankName": "Union Bank of India",
+			"accountNumber": "334455667788",
+			"amount": 60550.75,
+			"ifsc": "UBIN0534567",
+			"branchName": "Salt Lake",
+			"state": "West Bengal",
+			"valid": true
+		},
+		{
+			"pan": "PLMKO9012J",
+			"name": "Kavya Rao",
+			"bankName": "Yes Bank",
+			"accountNumber": "990011223344",
+			"amount": 75200.25,
+			"ifsc": "YESB0009012",
+			"branchName": "Banjara Hills",
+			"state": "Telangana",
+			"valid": true
+		},
+        {
+            "pan": "GPNPR7545D",
+            "name": "Sandipto Roy",
+            "bankName": "HDFC Bank",
+            "accountNumber": "123498765432",
+            "amount": 100000.00,
+            "ifsc": "HDFC0001234",
+            "branchName": "Park Street",
+            "state": "West Bengal",
+            "valid": true
+        }
+	]
+}
