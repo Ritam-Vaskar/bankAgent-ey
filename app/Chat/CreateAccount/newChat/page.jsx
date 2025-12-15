@@ -63,14 +63,36 @@ export default function CreateAccountChatPage({ searchParams }) {
   }, [chatId]);
 
   const saveMessage = async (msg) => {
-    await Axios.post("/api/chat/createaccount", {
+    try{
+    const res = await Axios.post("/api/chat/createaccount", {
       content: msg.content,
       chatId,
       role: msg.role,
       saveMessage: true,
     });
+    return res;}
+    catch(e)
+    {
+     if (e.response) {
+      // 👈 Backend responded with error
+      console.error("Backend error:", e.response.data);
+      alert(e.response.data.error);
+    } else if (e.request) {
+      // 👈 Request sent but no response
+      alert("No response from server");
+    } else {
+      // 👈 Axios setup error
+      alert(e.message);
+    }
+  
+   
+      }
+  
   };
-
+  
+  // -------------------------------------------------------
+  // 🟢 Function to ask the bot question automatically
+  // -------------------------------------------------------
   const askBotQuestion = async (index) => {
     if (!steps[index]) return;
 
@@ -98,7 +120,10 @@ export default function CreateAccountChatPage({ searchParams }) {
       };
 
       setMessages((prev) => [...prev, userMsg]);
-      await saveMessage(userMsg);
+   
+      const res = await saveMessage(userMsg);
+      if(res.length==0) return;
+      
       localStorage.setItem(currentStep.key, input.trim());
       setInput("");
     } else {

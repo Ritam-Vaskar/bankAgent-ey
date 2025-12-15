@@ -6,11 +6,23 @@ import connectDB from "@/lib/mongodb";
 import CreateaccountChat from "@/models/CreateaccountChat";
 import CreateaccountMessage from "@/models/CreateaccountMessage";
 import CreateUserAccount from "@/models/CreateUserAccount";
-
+import { checkGemini } from "@/lib/gemini-client";
 // Establish DB connection once (best practice, though not strictly required here)
 // Note: Depending on your 'connectDB' implementation, you might want to call it once
 // at the start of your handler or trust the connection is handled by your lib/mongodb.
 
+async function callLLM(content, mostrecentBotMessage)
+{
+    const prompt = `Validate the following user input based on the previous bot message: "${mostrecentBotMessage}".
+If the bot message requests an email, ensure the user input is a valid email format.
+If it requests a phone number, ensure it's a valid 10-digit number.
+Respond with JSON containing "content" (the validated input or error message) and "valid" (true/false).
+Do not provide any other text.`;
+    const response = await checkGemini(content, prompt);
+    const res = response;
+    console.log("Gemini response:", res.data);
+    return res;
+}
 export async function POST(req) {
     // 1. All body data is read and destructured in one go (CORRECTED)
     const body = await req.json();
@@ -71,6 +83,11 @@ export async function POST(req) {
             await connectDB(); 
             console.log("the informations are " + chatId + " " + role + " ");
             console.log("the content is :- "+content);
+            //check most recent message saved in database whose sender is bot of this chatId
+            const mostrecentBotMessage = await CreateaccountMessage.findOne({ chatId, sender: "bot" }).sort({ createdAt: -1 });
+            const currentContent = content;
+            console.log("mostrecentBotMessage :- "+mostrecentBotMessage);
+             const lastbotmessagecontent = mostrecentBotMessage ? mostrecentBotMessage.message : "";
             const newMessage = new CreateaccountMessage({
                 chatId,
                 sender:role,
@@ -79,6 +96,19 @@ export async function POST(req) {
             });
         
             await newMessage.save();
+              if(role ==="user")
+                {
+                    if(lastbotmessagecontent && (lastbotmessagecontent.includes("email") || lastbotmessagecontent.includes("phone")))
+                        {
+                            let data =await callLLM(currentContent, lastbotmessagecontent);
+                            console.log("the data is :- "+data["content"]);
+                            console.log("the content is :- "+data["content"] + " valid :- "+data["valid"]);
+                            if(!data["valid"])
+                                {
+                                    return NextResponse.json({ error: data["content"]}, { status: 400 });
+                                }
+                        }
+                }
             return NextResponse.json({ data: "Message Successfully Saved" }, { status: 200 });
         } catch (e) {
             console.log("error in message saving :- " + e);
