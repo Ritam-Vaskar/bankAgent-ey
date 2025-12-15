@@ -126,7 +126,9 @@ export default function Sidebar({ isOpen, onClose, activeChat, onChatSelect, onN
       )}
 
       {/* Sidebar */}
-      <aside
+      <aside style={{
+          "height": "88vh", overflow: "auto"
+        }}
         className={`fixed lg:static inset-y-0 left-0 z-40 w-80 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 border-r border-slate-700/30 transform transition-transform duration-300 ease-in-out shadow-2xl ${
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
@@ -144,7 +146,9 @@ export default function Sidebar({ isOpen, onClose, activeChat, onChatSelect, onN
           </div>
 
           {/* Chat History Section - Scrollable */}
-          <div className="flex-1 overflow-y-auto scrollbar-custom px-4 py-4">
+          <div style={{
+          "height": "88vh", "margin" : "0.7rem", overflow: "auto"
+        }} className="flex-1 overflow-y-auto scrollbar-custom px-4 py-4">
             <div className="flex items-center gap-2 mb-4">
               <Clock size={16} className="text-blue-400" />
               <h2 className="text-sm font-semibold text-gray-200 uppercase tracking-wider">

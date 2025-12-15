@@ -96,7 +96,7 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-12 gap-6">
           {/* Sidebar */}
-          <aside className="col-span-12 lg:col-span-4">
+          <aside className="col-span-12 lg:col-span-4 ">
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-full bg-indigo-600 text-white flex items-center justify-center text-lg font-semibold">
