@@ -12,34 +12,60 @@ export async function POST(req) {
 			return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 		}
 
-		const formData = await req.formData()
-		const file = formData.get("file")
+		const contentType = req.headers.get("content-type") || ""
+		let fileBuffer, fileName, fileType, uploadResult
 
-		if (!file) {
-			return NextResponse.json({ error: "No file provided" }, { status: 400 })
-		}
+		// Check if request is JSON with documentUrl or FormData with file
+		if (contentType.includes("application/json")) {
+			const body = await req.json()
+			const documentUrl = body.documentUrl
 
-		// Accept common images and PDFs
-		const validTypes = [
-			"image/jpeg",
-			"image/jpg",
-			"image/png",
-			"image/gif",
-			"image/webp",
-			"application/pdf",
-		]
-		if (!validTypes.includes(file.type)) {
-			return NextResponse.json(
-				{ error: "Invalid file type. Only JPEG, PNG, GIF, WEBP and PDF files are accepted." },
-				{ status: 400 },
-			)
-		}
+			if (!documentUrl) {
+				return NextResponse.json({ error: "No documentUrl provided" }, { status: 400 })
+			}
 
-		const fileBuffer = Buffer.from(await file.arrayBuffer())
+			// Fetch document from URL
+			const docResponse = await fetch(documentUrl)
+			if (!docResponse.ok) {
+				return NextResponse.json({ error: "Failed to fetch document from URL" }, { status: 400 })
+			}
 
-		try {
+			const arrayBuffer = await docResponse.arrayBuffer()
+			fileBuffer = Buffer.from(arrayBuffer)
+			fileType = docResponse.headers.get("content-type") || "application/pdf"
+			fileName = documentUrl.split('/').pop() || "income-proof"
+			uploadResult = { url: documentUrl, fileName: fileName }
+		} else {
+			// Original FormData handling
+			const formData = await req.formData()
+			const file = formData.get("file")
+
+			if (!file) {
+				return NextResponse.json({ error: "No file provided" }, { status: 400 })
+			}
+
+			// Accept common images and PDFs
+			const validTypes = [
+				"image/jpeg",
+				"image/jpg",
+				"image/png",
+				"image/gif",
+				"image/webp",
+				"application/pdf",
+			]
+			if (!validTypes.includes(file.type)) {
+				return NextResponse.json(
+					{ error: "Invalid file type. Only JPEG, PNG, GIF, WEBP and PDF files are accepted." },
+					{ status: 400 },
+				)
+			}
+
+			fileBuffer = Buffer.from(await file.arrayBuffer())
+			fileName = file.name
+			fileType = file.type
+
 			// Upload to Azure Blob first (keeps an auditable copy)
-			const uploadResult = await azureStorage.uploadDocument(
+			uploadResult = await azureStorage.uploadDocument(
 				fileBuffer,
 				file.name,
 				file.type,
@@ -47,7 +73,9 @@ export async function POST(req) {
 				"income-proof",
 			)
 			console.log("[v0] Income proof uploaded to Azure:", uploadResult.url)
+		}
 
+		try {
 			// Ask Gemini to extract income fields in a strict JSON format
 			const geminiPrompt = `You are reading an Indian income document: salary slip, ITR (Income Tax Return), or GST return.
 Carefully read the document and return a STRICT JSON object with ONLY these fields:
@@ -68,7 +96,7 @@ Rules:
 - If a field is not present, set it to null (not 0).
 - DO NOT add extra keys. DO NOT wrap in markdown. Output raw JSON only.`
 
-			const geminiResponse = await analyzeImageWithGemini(fileBuffer, file.type, geminiPrompt)
+			const geminiResponse = await analyzeImageWithGemini(fileBuffer, fileType, geminiPrompt)
 
 			// Some models wrap JSON in ``` blocks: strip them safely
 			let jsonString = geminiResponse

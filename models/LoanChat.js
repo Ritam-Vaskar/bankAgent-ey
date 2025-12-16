@@ -7,10 +7,29 @@ const LoanChatSchema = new mongoose.Schema(
       ref: "User", 
       required: true 
     },
-
+    incomeDocumentUrl: {
+      type: String,
+      default: null
+    },
+    extractedIncome: {
+      type: String,
+      default: null
+    },
+    availableLoans: {
+      type: Array,
+      default: []
+    },
+    selectedLoan: {
+      type: Object,
+      default: null
+    },
+    loanStatus: {
+      type: String,
+      enum: ["In Progress", "Applied", "Approved", "Rejected"],
+      default: "In Progress"
+    }
   },
-
   { timestamps: true }
 );
 
-export default mongoose.model("LoanChat", LoanChatSchema);
+export default mongoose.models.LoanChat || mongoose.model("LoanChat", LoanChatSchema);

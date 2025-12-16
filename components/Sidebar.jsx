@@ -50,21 +50,23 @@ export default function Sidebar({ isOpen, onClose, activeChat, onChatSelect, onN
     try {
       setLoading(true);
       
-      // Fetch both general chat history and create account chats
+      // Fetch all chat types
       const requests = [
         axios.get("/api/chat/history").catch(() => ({ data: { chats: [] } }))
       ];
       
-      // Add create account chats if userId is available
+      // Add service-specific chats if userId is available
       if (userId) {
         requests.push(
-          axios.get(`/api/chat/createaccount?userId=${userId}`).catch(() => ({ data: { chatName: [] } }))
+          axios.get(`/api/chat/createaccount?userId=${userId}`).catch(() => ({ data: { chatName: [] } })),
+          axios.get("/api/chat/loanservice").catch(() => ({ data: { chats: [] } }))
         );
       }
       
       const responses = await Promise.all(requests);
       const generalChats = responses[0];
       const accountChats = responses[1];
+      const loanChats = responses[2];
 
       const general = generalChats.data.chats || [];
       const accounts = accountChats ? (accountChats.data.chatName || []).map((chat, idx) => ({
@@ -74,9 +76,17 @@ export default function Sidebar({ isOpen, onClose, activeChat, onChatSelect, onN
         time: getRelativeTime(chat.createdAt || new Date()),
         type: "account"
       })) : [];
+      
+      const loans = loanChats ? (loanChats.data.chats || []).map((chat) => ({
+        id: chat._id || chat.id,
+        title: chat.title || "Loan Inquiry",
+        status: "active",
+        time: getRelativeTime(chat.updatedAt || chat.createdAt || new Date()),
+        type: "loan"
+      })) : [];
 
       // Combine and sort by time
-      setChatHistory([...general, ...accounts]);
+      setChatHistory([...general, ...accounts, ...loans]);
     } catch (error) {
       console.error("Error fetching chat history:", error);
     } finally {
@@ -100,18 +110,37 @@ export default function Sidebar({ isOpen, onClose, activeChat, onChatSelect, onN
     return new Date(date).toLocaleDateString();
   };
 
-  const handleDeleteChat = async (chatId, e) => {
+  const handleDeleteChat = async (chatId, e, chatType) => {
     e.stopPropagation();
-    if (!confirm("Delete this chat?")) return;
+    console.log("Attempting to delete chat:", chatId, "Type:", chatType);
+    
+    if (!confirm("Delete this chat?")) {
+      console.log("Delete cancelled by user");
+      return;
+    }
 
     try {
-      await axios.delete(`/api/chat/${chatId}`);
+      // Use different endpoint based on chat type
+      let endpoint;
+      if (chatType === "account") {
+        endpoint = `/api/chat/createaccount/${chatId}`;
+      } else if (chatType === "loan") {
+        endpoint = `/api/chat/loanservice/${chatId}`;
+      } else {
+        endpoint = `/api/chat/${chatId}`;
+      }
+      
+      console.log("Deleting chat using endpoint:", endpoint);
+      const response = await axios.delete(endpoint);
+      console.log("Delete response:", response.data);
+      
       setChatHistory((prev) => prev.filter((chat) => chat.id !== chatId));
       if (activeChat === chatId) {
         onNewChat();
       }
     } catch (error) {
       console.error("Error deleting chat:", error);
+      alert("Failed to delete chat. Please try again.");
     }
   };
 
@@ -219,7 +248,7 @@ export default function Sidebar({ isOpen, onClose, activeChat, onChatSelect, onN
                           </p>
                         </div>
                         <button 
-                          onClick={(e) => handleDeleteChat(chat.id, e)}
+                          onClick={(e) => handleDeleteChat(chat.id, e, chat.type)}
                           className="opacity-0 group-hover:opacity-100 transition-all hover:text-red-400 hover:scale-110 flex-shrink-0 p-1 rounded hover:bg-red-500/10"
                         >
                           <Trash2 size={14} />

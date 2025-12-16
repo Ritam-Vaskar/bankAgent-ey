@@ -18,9 +18,14 @@ const messageSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+
+    fileUrl: {
+      type: String,
+      default: null,
+    },
   },
 
   { timestamps: true }
 );
 
-export default mongoose.model("LoanMessage", messageSchema);
+export default mongoose.models.LoanMessage || mongoose.model("LoanMessage", messageSchema);
