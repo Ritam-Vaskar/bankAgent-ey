@@ -280,7 +280,9 @@ export default function CreateAccountChatPage({ searchParams }) {
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div className={`flex gap-3 max-w-[80%] ${m.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-                  <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
+                  <div style={{
+                    backgroundColor:"yellow"
+                  }} className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
                     m.role === "user" 
                       ? "bg-gradient-to-br from-purple-500 to-pink-600" 
                       : "bg-gradient-to-br from-blue-600 to-indigo-600"
