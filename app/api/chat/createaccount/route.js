@@ -6,22 +6,64 @@ import connectDB from "@/lib/mongodb";
 import CreateaccountChat from "@/models/CreateaccountChat";
 import CreateaccountMessage from "@/models/CreateaccountMessage";
 import CreateUserAccount from "@/models/CreateUserAccount";
-
+import { checkGemini } from "@/lib/gemini-client";
 // Establish DB connection once (best practice, though not strictly required here)
 // Note: Depending on your 'connectDB' implementation, you might want to call it once
 // at the start of your handler or trust the connection is handled by your lib/mongodb.
 
+async function callLLM(content, mostrecentBotMessage)
+{
+    const prompt = `Validate the following user input based on the previous bot message: "${mostrecentBotMessage}".
+If the bot message requests an email, ensure the user input is a valid email format.
+If it requests a phone number, ensure it's a valid 10-digit number.
+Respond with JSON containing "content" (the validated input or error message) and "valid" (true/false).
+Do not provide any other text.`;
+    const response = await checkGemini(content, prompt);
+    const res = response;
+    console.log("Gemini response:", res.data);
+    return res;
+}
 export async function POST(req) {
     // 1. All body data is read and destructured in one go (CORRECTED)
     const body = await req.json();
     const { 
-        newchat, saveMessage, createNewAccount, userId, content, sender, chatId,
-        name, phone, email, aadharPhotoUrl, aadharNo, panPhotoUrl, panNo, 
+        newchat, saveMessage, createNewAccount, getchat, userId, content, sender, chatId,
+        name, phone, email, aadharPhotoUrl, aadharNo, panPhotoUrl, panNo, role,
         address, AccountNumber,
     } = body;
     
+    // --- Get Specific Chat ---
+    if (getchat) {
+        try {
+            await connectDB();
+            console.log("Fetching account chat:", chatId);
+            
+            // Fetch chat details and messages
+            const chat = await CreateaccountChat.findById(chatId);
+            if (!chat) {
+                return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+            }
+            
+            const messages = await CreateaccountMessage.find({ chatId });
+            console.log("Found", messages.length, "messages for chat", chatId);
+            
+            return NextResponse.json({ 
+                chat: {
+                    _id: chat._id,
+                    userId: chat.userId,
+                    isOpened: chat.isOpened,
+                    createdAt: chat.createdAt,
+                },
+                messages: messages 
+            });
+        } catch (error) {
+            console.error("Error fetching account chat:", error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+    }
+    
     // --- New Chat Creation ---
-    if (newchat) {
+    else if (newchat) {
         try {
             // It's a good practice to ensure the DB connection is ready
             await connectDB(); 
@@ -39,12 +81,34 @@ export async function POST(req) {
     else if (saveMessage) {
         try {
             await connectDB(); 
+            console.log("the informations are " + chatId + " " + role + " ");
+            console.log("the content is :- "+content);
+            //check most recent message saved in database whose sender is bot of this chatId
+            const mostrecentBotMessage = await CreateaccountMessage.findOne({ chatId, sender: "bot" }).sort({ createdAt: -1 });
+            const currentContent = content;
+            console.log("mostrecentBotMessage :- "+mostrecentBotMessage);
+             const lastbotmessagecontent = mostrecentBotMessage ? mostrecentBotMessage.message : "";
             const newMessage = new CreateaccountMessage({
                 chatId,
-                sender,
-                message: content
+                sender:role,
+                message: content,
+            
             });
+        
             await newMessage.save();
+              if(role ==="user")
+                {
+                    if(lastbotmessagecontent && (lastbotmessagecontent.includes("email") || lastbotmessagecontent.includes("phone")))
+                        {
+                            let data =await callLLM(currentContent, lastbotmessagecontent);
+                            console.log("the data is :- "+data["content"]);
+                            console.log("the content is :- "+data["content"] + " valid :- "+data["valid"]);
+                            if(!data["valid"])
+                                {
+                                    return NextResponse.json({ error: data["content"]}, { status: 400 });
+                                }
+                        }
+                }
             return NextResponse.json({ data: "Message Successfully Saved" }, { status: 200 });
         } catch (e) {
             console.log("error in message saving :- " + e);
@@ -59,14 +123,17 @@ export async function POST(req) {
             await connectDB(); 
             const newAccount = new CreateUserAccount({ // Added 'new' keyword
                 name, phone, email, aadharPhotoUrl, aadharNo, panPhotoUrl, panNo, 
-                address, AccountNumber
+                address
             });
+            newAccount.AccountNumber = chatId;
             await newAccount.save();
+            //find an unique account Number 
+
             
             // 2. FIX: Corrected findByIdAndUpdate syntax 
             await CreateaccountChat.findByIdAndUpdate(chatId, { isOpened: false });
             
-            return NextResponse.json({ data: "Successfully Closed The Chat And Saved The Account Info in database" }, { status: 200 });
+            return NextResponse.json({ data: "Successfully Closed The Chat And Saved The Account Info in database" , accountNumber: newAccount.AccountNumber}, { status: 200 });
         } catch (err) {
             console.error("Chat createaccount error:", err);
             return NextResponse.json({ error: err.message }, { status: 500 });
@@ -83,23 +150,29 @@ export async function GET(req) {
     // 3. FIX: Correctly access query parameters from the URL
     const userId = req.nextUrl.searchParams.get("userId");
     const chatId = req.nextUrl.searchParams.get("chatId");
+    console.log("userId:", userId, "chatId:", chatId);
 
     try {
         await connectDB();
         
-        if (userId) {
+        if (!chatId) {
             // Fetch all chats for a specific user
             const allChat = await CreateaccountChat.find({ userId });
             // send all chat As name of the chat
-            const chatName = allChat.map(chat => chat.name);
+            //send chatname as well as chatid
+            console.log("allChat:", allChat);
+            const chatName = allChat.map((chat) => ({
+                chatId: chat._id,
+                
+            }));
             return NextResponse.json({ chatName });
         } else if (chatId) {
             // Fetch messages for a specific chat
             // You might want to get the chat details using _id, but chatId for messages is fine
             const allChat = await CreateaccountChat.find({ _id: chatId }); 
             const Allmessages = await CreateaccountMessage.find({ chatId });
-
-            return NextResponse.json({ allChat, Allmessages });
+            console.log("All messages are :- ", Allmessages);
+            return NextResponse.json({ Allmessages });
         } else {
             // Handle case where neither parameter is provided (Improvement)
             return NextResponse.json({ error: "Missing 'userId' or 'chatId' query parameter" }, { status: 400 });

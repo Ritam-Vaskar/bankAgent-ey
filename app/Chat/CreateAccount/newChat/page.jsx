@@ -1,333 +1,372 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Paperclip, Send, Bot, User } from "lucide-react";
+import { Send, Bot, User } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Axios from "axios";
+import React from "react";
+import { useRouter } from "next/navigation";
+import Navbar from "@/components/Navbar";
+import Sidebar from "@/components/Sidebar";
 
-export default function CreateAccountChatPage() {
+export default function CreateAccountChatPage({ searchParams }) {
   const { data: session } = useSession();
-  const userId = session?.user?.id || null;
-
-  const FORM_KEY = "create_account_form";
-  const CHAT_ID_KEY = "current_chat_id";
-  const MESSAGES_KEY = "chat_messages";
-  const ACCOUNT_KEY = "created_account_number";
+  const router = useRouter();
+  const { chatId } = React.use(searchParams);
+  const userId = session?.user?.id;
 
   const steps = [
-    { key: "name", prompt: "Please enter your name:" },
-    { key: "phone", prompt: "Enter your phone number:" },
-    { key: "email", prompt: "Enter your email:" },
-    { key: "address", prompt: "Enter your address:" },
-    { key: "aadharUrl", prompt: "Please upload your Aadhaar:", isFile: true },
-    { key: "panUrl", prompt: "Please upload your PAN card:", isFile: true }
+    { key: "name", prompt: "Please enter your name:", file: false },
+    { key: "phone", prompt: "Enter your phone number:", file: false },
+    { key: "email", prompt: "Enter your email:", file: false },
+    { key: "address", prompt: "Enter your address:", file: false },
+    { key: "aadharUrl", prompt: "Please upload your Aadhaar card:", file: true },
+    { key: "panUrl", prompt: "Please upload your PAN card:", file: true },
   ];
 
-  const [chatId, setChatId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [isReadonly, setIsReadonly] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const chatBoxRef = useRef(null);
+  const bottomRef = useRef(null);
   const fileRef = useRef(null);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [aadhaarFile, setAadhaarFile] = useState(null);
+  const [panFile, setPanFile] = useState(null);
+  // Refs to avoid async state timing issues when submitting right after selection
+  const aadhaarFileRef = useRef(null);
+  const panFileRef = useRef(null);
 
-  // Helper: get/save form in localStorage
-  function getForm() {
-    return JSON.parse(localStorage.getItem(FORM_KEY)) || { progressIndex: 0 };
-  }
-  function saveForm(form) {
-    localStorage.setItem(FORM_KEY, JSON.stringify(form));
-  }
-
-  // Helper: persist messages locally
-  function persistMessages(ms) {
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(ms));
-  }
-
-  // Create or resume chat id on mount
   useEffect(() => {
-    async function ensureChat() {
-      const savedChatId = localStorage.getItem(CHAT_ID_KEY);
-      if (savedChatId) {
-        setChatId(savedChatId);
-        return;
-      }
-      try {
-        const resp = await Axios.post("/api/chat/createaccount", {
-          newchat: true,
-          userId
-        });
-        const newId = resp.data?.chatId || resp.data?.id || null;
-        if (newId) {
-          localStorage.setItem(CHAT_ID_KEY, newId);
-          setChatId(newId);
-        }
-      } catch (err) {
-        console.error("Create chat error:", err);
-      }
+    if (input === undefined || input === null) {
+      setInput("");
     }
-    ensureChat();
-  }, [userId]);
+  }, [input]);
 
-  // Load initial messages and form progress
   useEffect(() => {
-    const form = getForm();
-    const initialPrompt = steps[form.progressIndex]?.prompt || "Let's continue!";
-    const savedMessages = JSON.parse(localStorage.getItem(MESSAGES_KEY)) || [
-      { id: "bot-start", sender: "bot", text: initialPrompt, timestamp: Date.now() }
-    ];
-    setMessages(savedMessages);
-
-    // If there's no chat in DB yet, ensure we post the initial bot message once DB chat exists.
-    // We'll rely on later sendMessage/ensureMessagePersistToServer calls.
-  }, []);
-
-  // Auto-scroll + persist to localStorage
-  useEffect(() => {
-    if (chatBoxRef.current) {
-      chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
-    }
-    persistMessages(messages);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Utility: append local message and POST to server
-  async function pushMessageToStateAndServer({ content, role }) {
-    const msg = {
-      id: `${role}-${Date.now()}`,
-      sender: role === "user" ? "user" : "bot",
-      text: content,
-      timestamp: Date.now()
+  useEffect(() => {
+    if (!chatId) return;
+
+    (async () => {
+      const res = await Axios.get(`/api/chat/createaccount?chatId=${chatId}`);
+      const msgs = Array.isArray(res.data?.messages) ? res.data.messages : [];
+      setMessages(msgs);
+
+      let idx = msgs.filter((m) => m.role === "user").length;
+      setStepIndex(idx);
+
+      if (msgs.length === 0) {
+        askBotQuestion(0);
+      }
+    })();
+  }, [chatId]);
+
+  const saveMessage = async (msg) => {
+    try{
+    const res = await Axios.post("/api/chat/createaccount", {
+      content: msg.content,
+      chatId,
+      role: msg.role,
+      saveMessage: true,
+    });
+    return res;}
+    catch(e)
+    {
+     if (e.response) {
+      // 👈 Backend responded with error
+      console.error("Backend error:", e.response.data);
+      alert(e.response.data.error);
+    } else if (e.request) {
+      // 👈 Request sent but no response
+      alert("No response from server");
+    } else {
+      // 👈 Axios setup error
+      alert(e.message);
+    }
+  
+   
+      }
+  
+  };
+  
+  // -------------------------------------------------------
+  // 🟢 Function to ask the bot question automatically
+  // -------------------------------------------------------
+  const askBotQuestion = async (index) => {
+    if (!steps[index]) return;
+
+    const botMsg = {
+      role: "bot",
+      content: steps[index].prompt,
+      timestamp: new Date(),
     };
 
-    // Add locally first
-    setMessages(prev => {
-      const next = [...prev, msg];
-      persistMessages(next);
-      return next;
-    });
+    setMessages((prev) => [...prev, botMsg]);
+    await saveMessage(botMsg);
+  };
 
-    // Attempt to save to server (best-effort; don't block UI)
-    try {
-      if (!chatId) {
-        // wait one second for chatId creation (in case still creating)
-        await new Promise(res => setTimeout(res, 1000));
+  const sendMessage = async () => {
+    const currentStep = steps[stepIndex];
+    if (!currentStep) return;
+
+    if (!currentStep.file) {
+      if (!input.trim()) return;
+
+      const userMsg = {
+        role: "user",
+        content: input.trim(),
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, userMsg]);
+   
+      const res = await saveMessage(userMsg);
+      if(res.length==0) return;
+      
+      localStorage.setItem(currentStep.key, input.trim());
+      setInput("");
+    } else {
+      const file = fileRef.current?.files?.[0];
+      if (!file) return alert("Please upload a file");
+
+      if (stepIndex === 4) {
+        setAadhaarFile(file);
+        aadhaarFileRef.current = file;
+      } else if (stepIndex === 5) {
+        setPanFile(file);
+        panFileRef.current = file;
       }
-      if (!chatId) return; // can't send
-     const res =  await Axios.post(`/api/chat/createaccount`, {
-        content,
-        role,
-        timestamp: msg.timestamp,
-        chatId,
-        userId
-      });
-      console.log(res.data);
-    } catch (err) {
-      console.warn("Failed to push message to server:", err);
-      // optionally mark message as unsent in local state (not implemented)
+
+      const userMsg = {
+        role: "user",
+        content: `${file.name} selected successfully ✔`,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, userMsg]);
+      await saveMessage(userMsg);
+      localStorage.setItem(currentStep.key, file.name);
     }
-  }
 
-  // Upload file to appropriate endpoint and return URL
-  async function uploadFileToServer(file, stepKey) {
-    const fd = new FormData();
-    fd.append("file", file);
-    // choose endpoint by stepKey
-    const endpoint = stepKey === "aadharUrl" ? "/api/upload/aadhar" : "/api/upload/pan";
-    const res = await Axios.post(endpoint, fd, {
-      headers: { "Content-Type": "multipart/form-data" },
-      maxContentLength: Infinity,
-      maxBodyLength: Infinity
-    });
-    // Expecting JSON like { url: 'https://...' }
-    return res.data?.url;
-  }
+    const next = stepIndex + 1;
+    setStepIndex(next);
 
-  // Finish/submit final form to backend and get account number
-  async function finishAndSubmitToServer() {
-    const form = getForm();
-    if (!chatId) {
-      console.error("No chatId for final submission");
+    if (next >= steps.length) {
+      setSubmitting(true);
+      
+      try {
+        // Use refs first to avoid reading stale state values
+        const selectedAadhaarFile = aadhaarFileRef.current || aadhaarFile;
+        const selectedPanFile = panFileRef.current || panFile;
+
+        let aadhaarUrl = "";
+        let aadhaarNo = "";
+        if (selectedAadhaarFile) {
+          const aadhaarFormData = new FormData();
+          aadhaarFormData.append("file", selectedAadhaarFile);
+          const aadhaarRes = await Axios.post("/api/upload/aadhaar", aadhaarFormData);
+          aadhaarUrl = aadhaarRes.data.url;
+          aadhaarNo = aadhaarRes.data.extractedData?.aadhaarNumber || "";
+        }
+
+        let panUrl = "";
+        let panNo = "";
+        if (selectedPanFile) {
+          const panFormData = new FormData();
+          panFormData.append("file", selectedPanFile);
+          const panRes = await Axios.post("/api/upload/pan", panFormData);
+          panUrl = panRes.data.url;
+          panNo = panRes.data.extractedData?.panNumber || "";
+        }
+
+        if (!panUrl || !panNo) {
+          setSubmitting(false);
+          alert("PAN upload or extraction failed. Please upload a valid PAN card.");
+          // Ask again for PAN upload
+          setStepIndex(5);
+          await askBotQuestion(5);
+          return;
+        }
+
+        const payload = {
+          name: localStorage.getItem("name"),
+          phone: localStorage.getItem("phone"),
+          email: localStorage.getItem("email"),
+          address: localStorage.getItem("address"),
+          aadharPhotoUrl: aadhaarUrl,
+          aadharNo: aadhaarNo,
+          panPhotoUrl: panUrl,
+          panNo: panNo,
+          userId: session?.user?.id,
+          chatId: chatId,
+          createNewAccount: true
+        };
+
+        const res = await Axios.post("/api/chat/createaccount", payload);
+        localStorage.clear();
+        alert("Account Created Successfully!");
+        router.push("/Chat/CreateAccount");
+      } catch (error) {
+        console.error("Account creation error:", error);
+        alert("Failed to create account. Please try again.");
+        setSubmitting(false);
+      }
       return;
     }
-    setSubmitting(true);
+
+    askBotQuestion(next);
+  };
+
+  const loadAccountChat = async (selectedChatId) => {
     try {
-      // Send final form to backend for account creation.
-      // Endpoint returns { accountNumber }
-      const resp = await Axios.post(`/api/chats/${chatId}/complete`, {
-        form,
-        userId,
-        chatId
+      const res = await Axios.get(`/api/chat/createaccount?chatId=${selectedChatId}`);
+      router.push(`/Chat/CreateAccount/newChat?userId=${userId}&chatId=${selectedChatId}`);
+    } catch (error) {
+      console.error("Error loading chat:", error);
+    }
+  };
+
+  const createNewAccountChat = async () => {
+    try {
+      const response = await Axios.post("/api/chat/createaccount", {
+        userId: userId,
+        newchat: true,
       });
-      const accountNumber = resp.data?.accountNumber || resp.data?.account || null;
-
-      if (accountNumber) {
-        localStorage.setItem(ACCOUNT_KEY, accountNumber);
-        // Save a final bot message with the account number
-        await pushMessageToStateAndServer({
-          content: `🎉 Account created successfully. Account Number: ${accountNumber}`,
-          role: "bot"
-        });
-      } else {
-        await pushMessageToStateAndServer({
-          content: "⚠️ Account creation returned no account number.",
-          role: "bot"
-        });
-      }
-
-      // mark finished: clear progress and mark read-only
-      localStorage.removeItem(FORM_KEY);
-      localStorage.removeItem(MESSAGES_KEY);
-      localStorage.removeItem(CHAT_ID_KEY);
-
-      setIsReadonly(true);
-      setSubmitting(false);
-    } catch (err) {
-      console.error("Final submit error:", err);
-      await pushMessageToStateAndServer({
-        content: "⚠️ Server error during account creation. Please try again later.",
-        role: "bot"
-      });
-      setSubmitting(false);
+      router.push(`/Chat/CreateAccount/newChat?userId=${userId}&chatId=${response.data.chatId}`);
+    } catch (error) {
+      console.error("Error creating chat:", error);
     }
-  }
+  };
 
-  // Primary sendMessage handler for text or file
-  async function sendMessage({ message = "", file = null }) {
-    if (isReadonly) return;
-
-    // ensure chatId exists before saving messages
-    if (!chatId) {
-      // try to create synchronously if not present
-      try {
-        const resp = await Axios.post("/api/chats/createaccount", { newchat: true, userId });
-        const newId = resp.data?.chatId || resp.data?.id || null;
-        if (newId) {
-          localStorage.setItem(CHAT_ID_KEY, newId);
-          setChatId(newId);
-        }
-      } catch (err) {
-        console.error("Could not create chat before message:", err);
-      }
-    }
-
-    const form = getForm();
-    const step = steps[form.progressIndex];
-
-    // Add user's message locally & server
-    const userText = file ? `📎 ${file.name} Submitted` : message;
-    await pushMessageToStateAndServer({ content: userText, role: "user" });
-
-    // Handle file steps
-    if (step.isFile) {
-      if (!file) {
-        // ask again for file
-        await pushMessageToStateAndServer({ content: step.prompt, role: "bot" });
-        return;
-      }
-
-      // Upload file
-      try {
-        // show an uploading indicator message
-        await pushMessageToStateAndServer({ content: `Uploading ${file.name}...`, role: "bot" });
-
-        const url = await uploadFileToServer(file, step.key);
-        if (!url) throw new Error("No URL returned");
-
-        form[step.key] = url;
-        // Save that file URL as a bot message (confirmation)
-        await pushMessageToStateAndServer({ content: `Uploaded ${file.name}`, role: "bot" });
-      } catch (err) {
-        console.error("File upload error:", err);
-        await pushMessageToStateAndServer({ content: "⚠️ File upload failed. Please try again.", role: "bot" });
-        return;
-      }
-    } else {
-      // normal text input -> store in form
-      form[step.key] = message;
-    }
-
-    // progress step
-    form.progressIndex = (form.progressIndex || 0) + 1;
-    saveForm(form);
-
-    if (form.progressIndex < steps.length) {
-      const nextPrompt = steps[form.progressIndex].prompt;
-      await pushMessageToStateAndServer({ content: nextPrompt, role: "bot" });
-    } else {
-      // Finished all steps: show processing UI and call final submit
-      await pushMessageToStateAndServer({ content: "Processing your information... ⏳", role: "bot" });
-      await finishAndSubmitToServer();
-    }
-
-    setInput("");
-  }
-
-  // Input handlers
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
-      <header className="p-4 bg-blue-600 text-white text-xl font-bold shadow">
-        Create Account
-      </header>
+    <div className="flex flex-col h-screen bg-gray-50">
+      <Navbar 
+        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} 
+        sidebarOpen={sidebarOpen}
+        session={session}
+      />
 
-      <div ref={chatBoxRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map(m => (
-          <div key={m.id} className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`max-w-xs p-3 rounded-2xl shadow-md text-sm ${m.sender === "user" ? "bg-blue-600 text-white rounded-br-none" : "bg-white text-gray-900 rounded-bl-none"}`}
-            >
-              <div className="flex items-start gap-2">
-                {m.sender === "bot" ? <Bot size={16} /> : <User size={16} />}
-                <span>{m.text}</span>
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar 
+          isOpen={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)}
+          activeChat={chatId}
+          onChatSelect={loadAccountChat}
+          onNewChat={createNewAccountChat}
+          userId={userId}
+        />
+
+        <div className="flex-1 flex flex-col bg-white">
+          {/* Chat Header */}
+          <div className="px-6 py-4 border-b border-gray-200 bg-white">
+            <h2 className="text-xl font-semibold text-gray-900">Account Creation Assistant</h2>
+            <p className="text-sm text-gray-500 mt-1">Secure account setup • Step {stepIndex + 1} of {steps.length}</p>
+          </div>
+
+          {/* Chat Messages */}
+          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+            {messages.map((m, i) => (
+              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`flex gap-3 max-w-[80%] ${m.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
+                    m.role === "user" 
+                      ? "bg-gradient-to-br from-purple-500 to-pink-600" 
+                      : "bg-gradient-to-br from-blue-600 to-indigo-600"
+                  }`}>
+                    {m.role === "user" ? <User size={20} className="text-white" /> : <Bot size={20} className="text-white" />}
+                  </div>
+                  
+                  <div className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
+                    <div className={`px-4 py-3 rounded-2xl shadow-md border ${
+                      m.role === "user" 
+                        ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white border-blue-500 rounded-br-none" 
+                        : "bg-white text-gray-900 border-gray-200 rounded-bl-none"
+                    }`}>
+                      <p className="text-sm leading-relaxed">{m.content}</p>
+                    </div>
+                    <span className="text-xs text-gray-400 mt-1.5">
+                      {new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                </div>
               </div>
+            ))}
+            <div ref={bottomRef}></div>
+          </div>
+
+          {/* Input Area */}
+          <div className="px-6 py-4 border-t border-gray-200 bg-white">
+            <div className="flex items-end gap-3">
+              {!steps[stepIndex]?.file ? (
+                <div className="flex-1">
+                  <input
+                    value={input || ""}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+                    placeholder="Type your response..."
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-900 placeholder-gray-400"
+                  />
+                </div>
+              ) : (
+                <div className="flex-1">
+                  <input 
+                    type="file" 
+                    ref={fileRef} 
+                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:font-medium"
+                  />
+                </div>
+              )}
+
+              <button
+                onClick={sendMessage}
+                disabled={uploading || submitting}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 rounded-xl transition-all shadow-md flex items-center gap-2 font-medium text-white disabled:opacity-50"
+              >
+                {uploading || submitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span className="hidden sm:inline text-sm">Processing</span>
+                  </>
+                ) : (
+                  <>
+                    <Send size={18} />
+                    <span className="hidden sm:inline text-sm">Send</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
-        ))}
-      </div>
 
-      <div className="p-4 bg-white border-t flex items-center gap-3">
-        <button
-          onClick={() => fileRef.current.click()}
-          className="p-3 bg-gray-200 rounded-full hover:bg-gray-300 transition"
-          disabled={isReadonly}
-        >
-          <Paperclip size={18} />
-        </button>
-
-        <input
-          ref={fileRef}
-          type="file"
-          className="hidden"
-          onChange={async e => {
-            const f = e.target.files[0];
-            if (f) await sendMessage({ file: f });
-            e.target.value = null;
-          }}
-          disabled={isReadonly}
-        />
-
-        <input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          placeholder={isReadonly ? "Chat is read-only" : "Type a message..."}
-          className="flex-1 p-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-          disabled={isReadonly}
-        />
-
-        <button
-          disabled={!input.trim() || isReadonly}
-          onClick={async () => {
-            if (!input.trim()) return;
-            await sendMessage({ message: input.trim() });
-          }}
-          className={`p-3 rounded-full text-white ${input.trim() && !isReadonly ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-300 cursor-not-allowed"}`}
-        >
-          <Send size={18} />
-        </button>
-
-        {/* Processing / final submit state indicator */}
-        {submitting && (
-          <div className="ml-3 px-4 py-2 bg-yellow-100 text-yellow-800 rounded">Processing...</div>
-        )}
+          {/* Loading Overlay */}
+          {submitting && (
+            <div className="absolute inset-0 bg-white/95 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="bg-white border-2 border-green-500 rounded-2xl p-10 shadow-2xl max-w-lg mx-4">
+                <div className="flex flex-col items-center space-y-6">
+                  <div className="relative">
+                    <div className="w-24 h-24 border-4 border-green-200 border-t-green-600 rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-16 h-16 bg-green-600 rounded-full opacity-20 animate-pulse"></div>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">Creating Your Account</h3>
+                    <p className="text-gray-600 text-sm mb-2">Processing your information securely...</p>
+                    <p className="text-gray-500 text-xs">This may take a few moments</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="w-2 h-2 bg-green-600 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-green-600 rounded-full animate-bounce" style={{animationDelay: "0.15s"}}></div>
+                    <div className="w-2 h-2 bg-green-600 rounded-full animate-bounce" style={{animationDelay: "0.3s"}}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

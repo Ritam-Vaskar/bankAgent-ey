@@ -5,6 +5,8 @@ import connectDB from "@/lib/mongodb"
 import Onboarding from "@/models/Onboarding"
 import { analyzeImageWithGemini } from "@/lib/gemini-client"
 import azureStorage from "@/components/azure"
+import fs from "fs/promises"
+import path from "path"
 
 export async function POST(req) {
   try {
@@ -108,6 +110,32 @@ export async function POST(req) {
             }, { status: 400 })
           }
 
+          // Digilocker-like check against local PAN registry JSON
+          try {
+            const registryPath = path.join(process.cwd(), "public", "data_json", "pan.json")
+            const raw = await fs.readFile(registryPath, "utf-8")
+            const registry = JSON.parse(raw)
+            const normalizedExtracted = (extractedData.panNumber || "").toUpperCase().trim()
+            const match = (registry.entries || []).find(e => (e.number || "").toUpperCase().trim() === normalizedExtracted)
+
+            if (!match) {
+              return NextResponse.json({
+                error: "PAN not found in registry",
+                errorCode: "REGISTRY_MISS",
+                extracted: extractedData
+              }, { status: 404 })
+            }
+
+            // Optional: compare name/dob with match for extra assurance
+          } catch (regErr) {
+            console.error("[v0] PAN registry check failed:", regErr)
+            return NextResponse.json({
+              error: "Registry check failed",
+              errorCode: "REGISTRY_ERROR",
+              details: regErr.message
+            }, { status: 500 })
+          }
+
           // Update onboarding record
           await Onboarding.findOneAndUpdate(
             { userId: session.user.id }, 
@@ -121,7 +149,8 @@ export async function POST(req) {
 
           return NextResponse.json({
             success: true,
-            message: "PAN uploaded and validated successfully",
+            message: "PAN uploaded, validated, and found in registry",
+            ok: true,
             url: uploadResult.url,
             fileName: uploadResult.fileName,
             extractedData: extractedData,
