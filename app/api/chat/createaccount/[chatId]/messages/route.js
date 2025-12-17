@@ -4,7 +4,7 @@ import { authOptions } from "@/auth"
 import connectDB from "@/lib/mongodb"
 import CreateaccountChat from "@/models/CreateaccountChat"
 import CreateaccountMessage from "@/models/CreateaccountMessage"
-import CreateUserAccount from "@/models/CreateUserAccount"
+import CreateUserAccount from "@/models/CreateuserAccount"
 import { checkGemini, analyzeImageWithGemini } from "@/lib/gemini-client"
 
 const steps = [

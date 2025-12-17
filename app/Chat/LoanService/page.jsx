@@ -279,24 +279,24 @@ export default function LoanServicePage() {
 									}`}
 								>
 									<div
-										className={`max-w-xl px-4 py-2 rounded-lg ${
+										className={`max-w-2xl px-4 py-3 rounded-lg ${
 											msg.sender === "user"
 												? "bg-blue-600 text-white"
 												: "bg-white text-gray-800 border border-gray-200"
 										}`}
 									>
-										<p className="whitespace-pre-wrap">{msg.message}</p>
+										<p className="whitespace-pre-line text-sm leading-relaxed">{msg.message}</p>
 										{msg.fileUrl && (
 											<a 
 												href={msg.fileUrl} 
 												target="_blank" 
 												rel="noopener noreferrer"
-												className="text-xs underline mt-2 block"
+												className="text-xs underline mt-2 block hover:opacity-80"
 											>
-												View uploaded file
+												📎 View uploaded file
 											</a>
 										)}
-										<span className="text-xs opacity-70 mt-1 block">
+										<span className="text-xs opacity-70 mt-2 block">
 											{new Date(msg.createdAt).toLocaleTimeString()}
 										</span>
 									</div>

@@ -4,7 +4,7 @@ import { authOptions } from "@/auth"
 import connectDB from "@/lib/mongodb"
 import Onboarding from "@/models/Onboarding"
 import { analyzeImageWithGemini } from "@/lib/gemini-client"
-import azureStorage from "@/components/azure"
+import azureStorage from "@/components/Azure"
 import fs from "fs/promises"
 import path from "path"
 

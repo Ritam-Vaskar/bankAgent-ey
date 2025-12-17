@@ -6,9 +6,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  experimental: {
-    outputFileTracingRoot: '/Users/sandiptoroy/Desktop/bankAgent-ey',
-  },
+  output: 'standalone',
 }
 
 export default nextConfig

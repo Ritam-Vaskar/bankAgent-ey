@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { analyzeImageWithGemini } from "@/lib/gemini-client"
-import azureStorage from "@/components/azure"
+import azureStorage from "@/components/Azure"
 
 // Extract income details from salary slip / ITR / GST return using Gemini
 export async function POST(req) {
