@@ -5,6 +5,8 @@ import connectDB from "@/lib/mongodb"
 import Onboarding from "@/models/Onboarding"
 import { analyzeImageWithGemini } from "@/lib/gemini-client"
 import azureStorage from "@/components/azure"
+import fs from "fs/promises"
+import path from "path"
 
 export async function POST(req) {
   try {
@@ -107,6 +109,33 @@ export async function POST(req) {
             }, { status: 400 })
           }
 
+          // Digilocker-like check against local registry JSON
+          try {
+            const registryPath = path.join(process.cwd(), "public", "data_json", "aadhar.json")
+            const raw = await fs.readFile(registryPath, "utf-8")
+            const registry = JSON.parse(raw)
+            const normalizedExtracted = (extractedData.aadhaarNumber || "").replace(/\D/g, "")
+            const match = (registry.entries || []).find(e => (e.number || "").replace(/\D/g, "") === normalizedExtracted)
+
+            if (!match) {
+              return NextResponse.json({
+                error: "Aadhaar not found in registry",
+                errorCode: "REGISTRY_MISS",
+                extracted: extractedData
+              }, { status: 404 })
+            }
+
+            // Optional: compare name/dob if present in registry for extra assurance
+            // Continue flow on success
+          } catch (regErr) {
+            console.error("[v0] Aadhaar registry check failed:", regErr)
+            return NextResponse.json({
+              error: "Registry check failed",
+              errorCode: "REGISTRY_ERROR",
+              details: regErr.message
+            }, { status: 500 })
+          }
+
           // Update onboarding record
           await Onboarding.findOneAndUpdate(
             { userId: session.user.id }, 
@@ -120,7 +149,8 @@ export async function POST(req) {
 
           return NextResponse.json({
             success: true,
-            message: "Aadhaar uploaded and validated successfully",
+            message: "Aadhaar uploaded, validated, and found in registry",
+            ok: true,
             url: uploadResult.url,
             fileName: uploadResult.fileName,
             extractedData: extractedData,

@@ -15,10 +15,10 @@ from typing import Optional
 from mcp.server.fastmcp import FastMCP
 
 # Import our internal modules
-from database.connection import db_manager
-from models.account import AccountModel
-from utils.validators import AccountValidator
-from utils.account_utils import generate_account_number
+from db.database.connection import db_manager
+from db.models.account import AccountModel
+from db.utils.validators import AccountValidator
+from db.utils.account_utils import generate_account_number
 
 mcp = FastMCP("Bank")
 

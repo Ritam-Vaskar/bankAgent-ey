@@ -12,9 +12,9 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" >
       <SessionWrapper>
-        <body className={geist.className}>{children}</body>
+        <body style={{overflowY: "auto", overflowX: "hidden", marginTop: "1.2rem"}} className={geist.className}>{children}</body>
       </SessionWrapper>
     </html>
   )
